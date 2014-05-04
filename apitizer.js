@@ -6,19 +6,34 @@ requirejs([
 	'lodash'
 ], function(Construct, fixture, tv4, types, _){
 
+	var currentPath = [];
 
 	var schemaGenerators = {
-		"array"   : function(schema){},
-		"boolean" : function(schema){},
-		"integer" : function(schema){},
-		"number"  : function(schema){},
-		"null"    : function(schema){},
-		"object"  : function(schema){},
-		"string"  : function(schema){}
+		"array"   : function(name, schema){},
+		"boolean" : function(name, schema){},
+		"integer" : function(name, schema){
+			return types.integer(schema).generate;
+		},
+		"number"  : function(name, schema){},
+		"null"    : function(name, schema){},
+		"object"  : function(name, schema){
+			return _.reduce(schema.properties, function(generators, prop, propName){
+				generators[propName] = schemaGenerators[prop.type](propName, prop);
+				return generators;
+			}, {})
+		},
+		"string"  : function(name, schema){
+			return types.string(schema).generate;
+		}
 	}
 
+	var withName = function(name, fn){
+		currentPath.push(name);
+		schemas[currentPath.join('.')] = fn();
+		currentPath.pop();
+	}
 
-
+	var schemas = {};
 
 	var makeSchemaGenerators = function(name, schema){
 		var generator
@@ -28,13 +43,38 @@ requirejs([
 
 
 	var apitizer = {
-		addSchema : function(){
-
+		addSchema : function(name, schema){
+			schemas[name] = schemaGenerators[schema.type || 'object'](name, schema);
 		},
-
+		generateFromSchema : function(name){
+			return _.merge({}, schemas[name], function merger(current, generator){
+				if(_.isFunction(generator)){
+					return generator();
+				}
+				return _.merge({}, generator, merger);
+			})
+		}
 	};
 
+	apitizer.addSchema('address', {
+  "type": "object",
+  "properties": {
+    "street_address": { "type": "string" },
+    "city":           { "type": "string" },
+    "state":          { "type": "string" },
+    "foo" : {
+    	type : "object",
+    	properties : {
+    		bar : {type: "integer"}
+    	}
+    }
+  },
+  "required": ["street_address", "city", "state"]
+})
 
+console.log(schemas)
+
+console.log(apitizer.generateFromSchema('address'))
 
 
 	/*var Apitizer = Construct.extend({

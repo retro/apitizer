@@ -7,7 +7,7 @@ requirejs.config({
     faker    : 'bower_components/Faker.js/Faker',
     lodash   : 'bower_components/lodash/dist/lodash',
     tv4      : 'bower_components/tv4/tv4',
-    randexp  : 'bower_components/randexp/index.js'
+    RandExp  : 'bower_components/Randexp.js/index'
   },
   shim : {
     faker : {
