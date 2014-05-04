@@ -23,6 +23,7 @@
     "qunit": "~1.14.0",
     "jquery": "~2.1.1",
     "Faker.js": "git@github.com:Marak/Faker.js.git#~0.7.0",
+    "Randexp.js": "https://github.com/fent/randexp.js/releases/download/v0.3.3/randexp.min.js",
     "lodash": "~2.4.1"
   }
 }
