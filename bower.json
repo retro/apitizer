@@ -19,7 +19,10 @@
   "dependencies": {
     "canjs": "~2.0.7",
     "requirejs": "~2.1.11",
-    "faker": "~0.0.2",
-    "tv4": "~1.0.17"
+    "tv4": "~1.0.17",
+    "qunit": "~1.14.0",
+    "jquery": "~2.1.1",
+    "Faker.js": "git@github.com:Marak/Faker.js.git#~0.7.0",
+    "lodash": "~2.4.1"
   }
 }
