@@ -1,0 +1,25 @@
+{
+  "name": "apitizer",
+  "version": "0.0.0",
+  "homepage": "https://github.com/retro/apitizer",
+  "authors": [
+    "Mihael Konjevic <konjevic@gmail.com>"
+  ],
+  "description": "API mocking for JavaScript apps",
+  "main": "apitizer.js",
+  "license": "MIT",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "canjs": "~2.0.7",
+    "requirejs": "~2.1.11",
+    "faker": "~0.0.2",
+    "tv4": "~1.0.17"
+  }
+}
