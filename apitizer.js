@@ -10,20 +10,114 @@ requirejs([
 
 	var schemaGenerators = {
 		"array"   : function(name, schema){},
-		"boolean" : function(name, schema){},
-		"integer" : function(name, schema){
-			return types.integer(schema).generate;
+		"boolean" : function(name, schema){
+			return types.boolean(schema);
 		},
-		"number"  : function(name, schema){},
-		"null"    : function(name, schema){},
+		"integer" : function(name, schema){
+			return types.integer(schema);
+		},
+		"number"  : function(name, schema){
+			return types.number(schema);
+		},
+		"null"    : function(name, schema){
+			return types.null(schema);
+		},
 		"object"  : function(name, schema){
-			return _.reduce(schema.properties, function(generators, prop, propName){
-				generators[propName] = schemaGenerators[prop.type](propName, prop);
-				return generators;
-			}, {})
+			return {
+				generate : function(){
+					return _.reduce(schema.properties, function(generators, prop, propName){
+						generators[propName] = determineGenerator(prop)(propName, prop);
+						return generators;
+					}, {});
+				}
+			}
 		},
 		"string"  : function(name, schema){
-			return types.string(schema).generate;
+			if(schema.pattern){
+				return types.randexp(schema);
+			} else if(schema.format){
+				return types[schema.format](schema);
+			}
+			return types.string(schema);
+		}
+	}
+
+	var combinatorGenerators = {
+		anyOf : function(name, schema){
+			var clonedSchema = _.clone(schema),
+				generators;
+
+			delete clonedSchema.anyOf;
+
+			generators = _.map(schema.anyOf, function(subschema){
+				return determineGenerator(_.extend({}, clonedSchema, subschema))(name, schema);
+			});
+
+			return {
+				generate : function(){
+					var i = types.integer({
+								minium: 0, 
+								maximum: generators.length, 
+								exclusiveMaximum: true
+							}).generate();
+
+					return generators[i]();
+				}
+			}
+		},
+		allOf : function(name, schema){
+			return {
+				generate : determineGenerator(_.merge.apply(_, schema.allOf))(name, schema)
+			};
+		},
+		oneOf : function(name, schema){
+			var generator = combinatorGenerators.anyOf()
+			return {
+				generate : function(){}
+			}
+		},
+		not : function(name, schema){
+			return {
+				generate : function(){}
+			}
+		}
+	}
+
+	var refSchema = function(ref){
+		return {
+			generate : function(){}
+		}
+	}
+
+	var determineGenerator = function(schema){
+		if(schema['$ref']){
+			return determineGenerator(refSchema(schema['$ref']));
+		} else if(schema.anyOf){
+			return combinatorGenerators.anyOf;
+		} else if(schema.allOf){
+			return combinatorGenerators.allOf;
+		} else if(schema.oneOf){
+			return combinatorGenerators.oneOf;
+		} else if(schema.not){
+			return combinatorGenerators.not
+		} else if(schema.type){
+			return schemaGenerators[schema.type];
+		} else if(schema.format){
+			return schemaGenerators.string;
+		} else if(schema.properties){
+			return schemaGenerators.object;
+		} else if(schema.items){
+			return schemaGenerators.array;
+		}
+		return function(){
+			return {
+				generate : function(){
+					return {};
+				},
+				validate : function(){
+					return true;
+				}
+			}
 		}
 	}
 
@@ -44,14 +138,12 @@ requirejs([
 
 	var apitizer = {
 		addSchema : function(name, schema){
-			schemas[name] = schemaGenerators[schema.type || 'object'](name, schema);
+			schemas[name] = determineGenerator(schema)(name, schema).generate();
 		},
 		generateFromSchema : function(name){
 			return _.merge({}, schemas[name], function merger(current, generator){
-				if(_.isFunction(generator)){
-					return generator();
-				}
-				return _.merge({}, generator, merger);
+				var val = generator.generate();
+				return _.isPlainObject(val) ?  _.merge({}, val, merger) : val;
 			})
 		}
 	};
@@ -62,6 +154,7 @@ requirejs([
     "street_address": { "type": "string" },
     "city":           { "type": "string" },
     "state":          { "type": "string" },
+    "uuid" : {"type" : "string", pattern : /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/},
     "foo" : {
     	type : "object",
     	properties : {
