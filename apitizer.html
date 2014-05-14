@@ -4,7 +4,68 @@
     <title>Apitizer</title>
   </head>
   <body>
-    <script type='text/javascript' src='bower_components/requirejs/require.js' data-main='apitizer'></script>
+    <script type='text/javascript' src='bower_components/requirejs/require.js'></script>
     <script type='text/javascript' src='requirejsconfig.js'></script>
+    <script>
+      requirejs(['./apitizer'], function(apitizer){
+        apitizer.addSchema('address', {
+  "$schema": "http://json-schema.org/draft-04/schema#",
+
+  "definitions": {
+    "address": {
+      "type": "object",
+      "properties": {
+        "street_address": { "type": "string" },
+        "city":           { "type": "string" },
+        "state":          { "type": "string" },
+        "phoneNumbers" : {"type": "array", items: {
+          type: "integer",
+          minimum : 1000000,
+          maximum : 9999999
+        }},
+        country : {
+          type : "object",
+          oneOf : [{
+            type : "object",
+            properties : {
+              postal : {
+                type : "integer",
+                minimum : 100,
+                maximum : 999
+              },
+              name : {
+                type : "string"
+              }
+            }
+          }, {
+            type: "string"
+          }]
+        }
+      },
+      "required": ["street_address", "city", "state"]
+    }
+  },
+
+  "type": "object",
+
+  "properties": {
+    "billing_address": { "$ref": "#/definitions/address" },
+    "shipping_address": {
+      "allOf": [
+        { "$ref": "#/definitions/address" },
+        { "properties":
+          { "type": { "enum": [ "residential", "business" ] } },
+          "required": ["type"]
+        }
+      ]
+    }
+  }
+})
+
+//console.log(schemas)
+
+console.log(apitizer.validateWithSchema(apitizer.generateFromSchema('address')), apitizer.generateFromSchema('address'))
+      })
+    </script>
   </body>
 </html>
