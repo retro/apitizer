@@ -8,6 +8,7 @@
     <script type='text/javascript' src='requirejsconfig.js'></script>
     <script>
       requirejs(['./apitizer'], function(apitizer){
+        window.apitizer = apitizer;
         apitizer.addSchema('address', {
   "$schema": "http://json-schema.org/draft-04/schema#",
 
@@ -63,8 +64,13 @@
 })
 
 //console.log(schemas)
-
-console.log(apitizer.validateWithSchema(apitizer.generateFromSchema('address')), apitizer.generateFromSchema('address'))
+var val = apitizer.generateFromSchema('address', {
+  "billing_address.city" : function(){
+    return 'Zagreb'
+  }
+});
+console.log(val)
+console.log(apitizer.validateWithSchema(val))
       })
     </script>
   </body>

@@ -26,8 +26,11 @@ define([
 		validateWithSchema : function(name, data){
 			return tv4.validateMultiple(data, name);
 		},
-		generateFromSchema : function(name){
-			return (new Generator(name)).generate();
+		generateFromSchema : function(name, overrides){
+			return (new Generator(name, 0, overrides)).generate();
+		},
+		schemaStore : function(name, storeCount, overrides){
+			return new Generator(name, storeCount, overrides);
 		},
 		addFormat : function(name, format){
 			types.formats[name] = format;
