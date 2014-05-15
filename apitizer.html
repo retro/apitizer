@@ -67,10 +67,13 @@
 var val = apitizer.generateFromSchema('address', {
   "billing_address.city" : function(){
     return 'Zagreb'
+  },
+  "billing_address.phoneNumbers" : function(){
+    return [1000001]
   }
 });
 console.log(val)
-console.log(apitizer.validateWithSchema(val))
+console.log('address', apitizer.validateWithSchema('address', val))
       })
     </script>
   </body>
