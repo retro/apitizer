@@ -1,0 +1,32 @@
+<!DOCTYPE HTML>
+<html lang="en">
+  <head>
+    <title>APItizer tests</title>
+    <link rel="stylesheet" href="../bower_components/qunit/qunit/qunit.css">
+    <style type="text/css">
+      #blanket-main { 
+        font-size: 12px !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="qunit"></div>
+    <div id="qunit-fixture"></div>
+    <script type='text/javascript' src='../bower_components/requirejs/require.js'></script>
+    <script type='text/javascript' src='../requirejsconfig.js'></script>
+    <script type='text/javascript' src='../bower_components/qunit/qunit/qunit.js'></script>
+    <script type='text/javascript'>
+      requirejs.config({
+        baseUrl : '../'
+      })
+      QUnit.config.autostart = false;
+      requirejs(['tests/apitizer_test'], function(){
+        for(var i = 0; i < arguments.length; i++){
+          arguments[i]();
+        }
+        QUnit.load();
+        QUnit.start();
+      })
+    </script>
+  </body>
+</html>

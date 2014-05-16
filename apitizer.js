@@ -5,7 +5,7 @@ define([
 	'lodash',
 	'./lib/fixtures',
 	'./lib/generator',
-], function(Construct, tv4, types, _, fixtures, Generator){
+], function(Construct, tv4, types, _, fixture, Generator){
 
 	types.formats = types.formats || {};
 
@@ -23,6 +23,13 @@ define([
 			tv4.addSchema(name, schema);
 			Generator.addSchema(name, schema);
 		},
+		getSchema : function(name){
+			return Generator.getSchema(name);
+		},
+		dropSchemas : function(){
+			tv4.dropSchemas();
+			Generator.dropSchemas();
+		},
 		validateWithSchema : function(name, data){
 			return tv4.validateMultiple(data, name);
 		},
@@ -34,13 +41,13 @@ define([
 		},
 		addFormat : function(name, format){
 			types.formats[name] = format;
-			tv4.addFormat('name', function(val){
+			tv4.addFormat(name, function(val){
 				if(format.validate(val)){
 					return null;
 				}
 				return 'failed validation by the ' + name + ' format';
 			})
 		},
-		fixtures : fixtures
+		fixture : fixture
 	};
 })
