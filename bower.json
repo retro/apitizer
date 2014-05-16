@@ -17,13 +17,20 @@
     "tests"
   ],
   "dependencies": {
-    "canjs": "~2.0.7",
-    "requirejs": "~2.1.11",
-    "tv4": "~1.0.17",
-    "qunit": "~1.14.0",
-    "jquery": "~2.1.1",
-    "Faker.js": "git@github.com:Marak/Faker.js.git#~0.7.0",
-    "Randexp.js": "https://github.com/fent/randexp.js/releases/download/v0.3.3/randexp.min.js",
-    "lodash": "~2.4.1"
-  }
+    "blanket": "~1.1.5",
+    "taffydb": "*",
+    "Faker.js" : "git@github.com:Marak/Faker.js.git#0.7.0",
+    "canjs" : "~2.1.0",
+    "jquery" : "~2.1.1",
+    "lodash" : "~2.4.1",
+    "qunit" : "~1.14.0",
+    "requirejs" : "~2.1.11",
+    "tv4" : "~1.0.17",
+    "Randexp.js" : "https://github.com/fent/randexp.js/releases/download/v0.3.3/randexp.min.js"
+  },
+  "keywords": [
+    "rest",
+    "api",
+    "mock"
+  ]
 }
