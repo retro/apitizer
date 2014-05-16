@@ -48,6 +48,7 @@ define([
 				return 'failed validation by the ' + name + ' format';
 			})
 		},
+		types : types,
 		fixture : fixture
 	};
 })
