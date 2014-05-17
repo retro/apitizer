@@ -20,18 +20,16 @@ define([
 
 	return {
 		addSchema : function(name, schema){
-			tv4.addSchema(name, schema);
 			Generator.addSchema(name, schema);
 		},
 		getSchema : function(name){
 			return Generator.getSchema(name);
 		},
 		dropSchemas : function(){
-			tv4.dropSchemas();
 			Generator.dropSchemas();
 		},
 		validateWithSchema : function(name, data){
-			return tv4.validateMultiple(data, name);
+			return Generator.validateWithSchema(name, data);
 		},
 		generateFromSchema : function(name, overrides){
 			return (new Generator(name, 0, overrides)).generate();
@@ -40,13 +38,7 @@ define([
 			return new Generator(name, storeCount, overrides);
 		},
 		addFormat : function(name, format){
-			types.formats[name] = format;
-			tv4.addFormat(name, function(val){
-				if(format.validate(val)){
-					return null;
-				}
-				return 'failed validation by the ' + name + ' format';
-			})
+			Generator.addFormat(name, format);
 		},
 		types : types,
 		fixture : fixture

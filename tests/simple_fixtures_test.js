@@ -21,9 +21,9 @@ define(['apitizer', 'jquery'], function(apitizer, $) {
 			}
 		}
 
-		var autoincrement = apitizer.types.autoincrement();
 
 		apitizer.addSchema('user', userSchema);
+		var autoincrement = apitizer.types.autoincrement();
 
 		var store = apitizer.schemaStore('user', 10, {
 			id : autoincrement
@@ -31,8 +31,11 @@ define(['apitizer', 'jquery'], function(apitizer, $) {
 
 		apitizer.fixture.resource('/users', store);
 
-
-		module('apitizer/simple_fixtures');
+		module('apitizer/simple_fixtures', {
+			setup : function(){
+				apitizer.addSchema('user', userSchema);
+			}
+		});
 
 		asyncTest("Getting all users", function(){
 			expect(2);
@@ -74,8 +77,8 @@ define(['apitizer', 'jquery'], function(apitizer, $) {
 			$.get('/users/11').then(function(user){
 				ok((user.username === 'retro' && user.password === 'retroaktive'), "Correct user was retrieved");
 				start();
-			})
-		})
+			});
+		});
 
 		asyncTest("Find a user", function(){
 			expect(2);
@@ -84,8 +87,8 @@ define(['apitizer', 'jquery'], function(apitizer, $) {
 				equal(users.count, 1, "Only one user is found");
 				equal(users.data[0].username, "retro", "Correct user is found");
 				start();
-			})
-		})
+			});
+		});
 
 		asyncTest("Update a user", function(){
 			expect(2);
@@ -98,9 +101,9 @@ define(['apitizer', 'jquery'], function(apitizer, $) {
 				$.get('/users/11').then(function(user){
 					equal(updatedUser.id, 11, "Requesting updated user returns updated data");
 					start();
-				})
-			})
-		})
+				});
+			});
+		});
 
 		asyncTest("Delete a user", function(){
 			expect(1);
@@ -110,9 +113,64 @@ define(['apitizer', 'jquery'], function(apitizer, $) {
 				$.get('/users').then(function(users){
 					equal(users.count, 10, "User was destroyed");
 					start();
-				})
-			})
-		})
+				});
+			});
+		});
+
+		asyncTest("Getting a user that doesn't exist will return 404 error", function(){
+			expect(1);
+			$.get('/users/foo').fail(function(response){
+				equal(response.status, 404, "404 error is returned");
+				start();
+			});
+		});
+
+		asyncTest("Updating a user that doesn't exist will return 404 error", function(){
+			expect(1);
+			$.ajax('/users/foo', {
+				data : {},
+				type : 'put'
+			}).fail(function(response){
+				equal(response.status, 404, "404 error is returned");
+				start();
+			});
+		});
+
+		asyncTest("Deleting a user that doesn't exist will return 404 error", function(){
+			expect(1);
+			$.ajax('/users/foo', {
+				data : {},
+				type : 'delete'
+			}).fail(function(response){
+				equal(response.status, 404, "404 error is returned");
+				start();
+			});
+		});
+
+		asyncTest("Creating a user with the wrong data will return 406 error", function(){
+			expect(1);
+			$.post('/users', {
+				username : 1,
+				password : 2
+			}).fail(function(response){
+				equal(response.status, 406, "406 error is returned");
+				start();
+			});
+		});
+
+		asyncTest("Updating a user with the wrong data will return 406 error", function(){
+			expect(1);
+			$.ajax('/users/10', {
+				data : {
+					username : 1,
+					password : 2
+				},
+				type : 'put'
+			}).fail(function(response){
+				equal(response.status, 406, "406 error is returned");
+				start();
+			});
+		});
 
 	};
 });

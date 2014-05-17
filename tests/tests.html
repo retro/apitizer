@@ -21,13 +21,18 @@
         baseUrl : '../'
       })
       QUnit.config.autostart = false;
-      requirejs(['tests/apitizer_test', 'tests/simple_fixtures_test'], function(){
-        for(var i = 0; i < arguments.length; i++){
-          arguments[i]();
-        }
-        QUnit.load();
-        QUnit.start();
-      })
+      requirejs([
+        'tests/apitizer_test',
+        'tests/simple_fixtures_test',
+        'tests/related_store',
+        'tests/complex_schema'
+      ], function(){
+          for(var i = 0; i < arguments.length; i++){
+            arguments[i]();
+          }
+          QUnit.load();
+          QUnit.start();
+        })
     </script>
   </body>
 </html>
