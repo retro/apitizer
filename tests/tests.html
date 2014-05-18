@@ -23,9 +23,10 @@
       QUnit.config.autostart = false;
       requirejs([
         'tests/apitizer_test',
-        'tests/simple_fixtures_test',
-        'tests/related_store',
-        'tests/complex_schema'
+        'tests/custom_fixtures_test',
+        'tests/related_store_test',
+        'tests/complex_schema_test',
+        'tests/simple_fixtures_test'
       ], function(){
           for(var i = 0; i < arguments.length; i++){
             arguments[i]();

@@ -24,7 +24,7 @@ define(['apitizer'], function(apitizer) {
 			equal(apitizer.getSchema('user'), userSchema, "Adding and retrieving schemas works")
 		});
 
-		test('Validating with schema works', function() {
+		test('Validating with schema', function() {
 			var result;
 
 			apitizer.addSchema('user', userSchema);
@@ -37,7 +37,7 @@ define(['apitizer'], function(apitizer) {
 			ok(result.valid, "Schema successfuly validated the object");
 		});
 
-		test('Droping schemas works', function(){
+		test('Droping schemas', function(){
 			var schema = {};
 
 			apitizer.addSchema('foo', schema);
@@ -58,7 +58,7 @@ define(['apitizer'], function(apitizer) {
 			ok(result.valid, 'Data generated from schema is valid')
 		})
 
-		test('Adding a custom format works', function(){
+		test('Adding a custom format', function(){
 			var format = {
 					generate : function(){
 						return "foo";
@@ -93,7 +93,7 @@ define(['apitizer'], function(apitizer) {
 
 		})
 
-		test("Store works", function(){
+		test("Store", function(){
 			var store, generated, result;
 
 			apitizer.addSchema('user', userSchema);
@@ -105,7 +105,7 @@ define(['apitizer'], function(apitizer) {
 			ok(result.valid, "Accessing data from store works");
 		});
 
-		test("Passing overrides to store works", function(){
+		test("Passing overrides to store", function(){
 			var store, generated, result;
 
 			apitizer.addSchema('user', userSchema);
