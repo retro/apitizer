@@ -21,7 +21,6 @@ define(['apitizer', 'jquery'], function(apitizer, $) {
 			}
 		}
 
-
 		apitizer.addSchema('user', userSchema);
 		var autoincrement = apitizer.types.autoincrement();
 
@@ -171,6 +170,20 @@ define(['apitizer', 'jquery'], function(apitizer, $) {
 				start();
 			});
 		});
+
+		asyncTest("Ordering and limiting", function(){
+			expect(2);
+
+			$.get('/users', {
+				order : "id desc",
+				limit : 2,
+				offset : 1,
+			}).then(function(users){
+				equal(users.count, 2, "Two users are returned");
+				ok(users.data[0].id === 10 && users.data[1].id === 9, "Users are returned in desc sort");
+				start();
+			})
+		})
 
 	};
 });
