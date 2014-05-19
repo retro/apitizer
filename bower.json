@@ -6,7 +6,7 @@
     "Mihael Konjevic <konjevic@gmail.com>"
   ],
   "description": "API mocking for JavaScript apps",
-  "main": "apitizer.js",
+  "main": "dist/apitizer.js",
   "license": "MIT",
   "private": true,
   "ignore": [
@@ -16,7 +16,7 @@
     "test",
     "tests"
   ],
-  "dependencies": {
+  "devDependencies": {
     "blanket": "~1.1.5",
     "taffydb": "*",
     "Faker.js": "git@github.com:Marak/Faker.js.git#0.7.2",
@@ -33,6 +33,7 @@
   "keywords": [
     "rest",
     "api",
-    "mock"
+    "mock",
+    "fixture"
   ]
 }
