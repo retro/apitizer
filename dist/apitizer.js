@@ -4,11 +4,12 @@
         //in another project. That other project will only
         //see this AMD call, not the internal modules in
         //the closure below.
+
         define([], factory);
     } else {
         //Browser globals case. Just assign the
         //result to a property on the global.
-        root.libGlobalName = factory();
+        root.apitizer = factory();
     }
 }(this, function () {/**
  * @license almond 0.2.9 Copyright (c) 2011-2014, The Dojo Foundation All Rights Reserved.
@@ -434,1802 +435,6 @@ var requirejs, require, define;
 
 define("bower_components/almond/almond.js", function(){});
 
-/*!
- * CanJS - 2.1.0
- * http://canjs.us/
- * Copyright (c) 2014 Bitovi
- * Mon, 05 May 2014 22:15:43 GMT
- * Licensed MIT
- * Includes: CanJS default build
- * Download from: http://canjs.us/
- */
-define('can/util/can',[],function () {
-	/* global GLOBALCAN */
-	var can = window.can || {};
-	if (typeof GLOBALCAN === 'undefined' || GLOBALCAN !== false) {
-		window.can = can;
-	}
-
-	// An empty function useful for where you need a dummy callback.
-	can.k = function(){};
-
-	can.isDeferred = function (obj) {
-		var isFunction = this.isFunction;
-		// Returns `true` if something looks like a deferred.
-		return obj && isFunction(obj.then) && isFunction(obj.pipe);
-	};
-
-	var cid = 0;
-	can.cid = function (object, name) {
-		if (!object._cid) {
-			cid++;
-			object._cid = (name || '') + cid;
-		}
-		return object._cid;
-	};
-	can.VERSION = '2.1.0';
-
-	can.simpleExtend = function (d, s) {
-		for (var prop in s) {
-			d[prop] = s[prop];
-		}
-		return d;
-	};
-
-
-	can.frag = function(item){
-		var frag;
-		if(!item || typeof item === "string"){
-			frag = can.buildFragment(item == null ? "" : ""+item, document.body);
-			// If we have an empty frag...
-			if (!frag.childNodes.length) {
-				frag.appendChild(document.createTextNode(''));
-			}
-			return frag;
-		} else if(item.nodeType === 11) {
-			return item;
-		} else if(typeof item.nodeType === "number") {
-			frag = document.createDocumentFragment();
-			frag.appendChild(item);
-			return frag;
-		} else if(typeof item.length === "number") {
-			frag = document.createDocumentFragment();
-			can.each(item, function(item){
-				frag.appendChild( can.frag(item) );
-			});
-			return frag;
-		} else {
-			frag = can.buildFragment( ""+item, document.body);
-			// If we have an empty frag...
-			if (!frag.childNodes.length) {
-				frag.appendChild(document.createTextNode(''));
-			}
-			return frag;
-		}
-	};
-	
-	// this is here in case can.compute hasn't loaded
-	can.__reading = function () {};
-
-
-
-	return can;
-});
-/*!
- * CanJS - 2.1.0
- * http://canjs.us/
- * Copyright (c) 2014 Bitovi
- * Mon, 05 May 2014 22:15:43 GMT
- * Licensed MIT
- * Includes: CanJS default build
- * Download from: http://canjs.us/
- */
-define('can/util/attr',["can/util/can"], function (can) {
-
-	// Acts as a polyfill for setImmediate which only works in IE 10+. Needed to make
-	// the triggering of `attributes` event async.
-	var setImmediate = window.setImmediate || function (cb) {
-			return setTimeout(cb, 0);
-		},
-		attr = {
-			// This property lets us know if the browser supports mutation observers.
-			// If they are supported then that will be setup in can/util/jquery and those native events will be used to inform observers of attribute changes.
-			// Otherwise this module handles triggering an `attributes` event on the element.
-			MutationObserver: window.MutationObserver || window.WebKitMutationObserver || window.MozMutationObserver,
-
-			/**
-			 * @property {Object.<String,(String|Boolean|function)>} can.view.attr.map
-			 * @parent can.view.elements
-			 * @hide
-			 *
-			 *
-			 * A mapping of
-			 * special attributes to their JS property. For example:
-			 *
-			 *     "class" : "className"
-			 *
-			 * means get or set `element.className`. And:
-			 *
-			 *      "checked" : true
-			 *
-			 * means set `element.checked = true`.
-			 *
-			 *
-			 * If the attribute name is not found, it's assumed to use
-			 * `element.getAttribute` and `element.setAttribute`.
-			 */
-			map: {
-				"class": "className",
-				"value": "value",
-				"innerText": "innerText",
-				"textContent": "textContent",
-				"checked": true,
-				"disabled": true,
-				"readonly": true,
-				"required": true,
-				// For the `src` attribute we are using a setter function to prevent values such as an empty string or null from being set.
-				// An `img` tag attempts to fetch the `src` when it is set, so we need to prevent that from happening by removing the attribute instead.
-				src: function (el, val) {
-					if (val == null || val === "") {
-						el.removeAttribute("src");
-						return null;
-					} else {
-						el.setAttribute("src", val);
-						return val;
-					}
-				},
-				style: function (el, val) {
-					return el.style.cssText = val || "";
-				}
-			},
-			// These are elements whos default value we should set.
-			defaultValue: ["input", "textarea"],
-			// ## attr.set
-			// Set the value an attribute on an element.
-			set: function (el, attrName, val) {
-				var oldValue;
-				// In order to later trigger an event we need to compare the new value to the old value, so here we go ahead and retrieve the old value for browsers that don't have native MutationObservers.
-				if (!attr.MutationObserver) {
-					oldValue = attr.get(el, attrName);
-				}
-
-				var tagName = el.nodeName.toString()
-					.toLowerCase(),
-					prop = attr.map[attrName],
-					newValue;
-				
-				// Using the property of `attr.map`, go through and check if the property is a function, and if so call it. Then check if the property is `true`, and if so set the value to `true`, also making sure to set `defaultChecked` to `true` for elements of `attr.defaultValue`. We always set the value to true because for these boolean properties, setting them to false would be the same as removing the attribute.
-				//
-				// For all other attributes use `setAttribute` to set the new value.
-				if (typeof prop === "function") {
-					newValue = prop(el, val);
-				} else if (prop === true) {
-					newValue = el[attrName] = true;
-
-					if (attrName === "checked" && el.type === "radio") {
-						if (can.inArray(tagName, attr.defaultValue) >= 0) {
-							el.defaultChecked = true;
-						}
-					}
-
-				} else if (prop) {
-					newValue = el[prop] = val;
-					if (prop === "value" && can.inArray(tagName, attr.defaultValue) >= 0) {
-						el.defaultValue = val;
-					}
-				} else {
-					el.setAttribute(attrName, val);
-					newValue = val;
-				}
-
-				// Now that the value has been set, for browsers without MutationObservers, check to see that value has changed and if so trigger the "attributes" event on the element.
-				if (!attr.MutationObserver && newValue !== oldValue) {
-					attr.trigger(el, attrName, oldValue);
-				}
-			},
-			// ## attr.trigger
-			// Used to trigger an "attributes" event on an element. Checks to make sure that someone is listening for the event and then queues a function to be called asynchronously using `setImmediate.
-			trigger: function (el, attrName, oldValue) {
-				if (can.data(can.$(el), "canHasAttributesBindings")) {
-					return setImmediate(function () {
-						can.trigger(el, {
-							type: "attributes",
-							attributeName: attrName,
-							target: el,
-							oldValue: oldValue,
-							bubbles: false
-						}, []);
-					});
-				}
-			},
-			// ## attr.get
-			// Gets the value of an attribute. First checks to see if the property is a string on `attr.map` and if so returns the value from the element's property. Otherwise uses `getAttribute` to retrieve the value.
-			get: function (el, attrName) {
-				var prop = attr.map[attrName];
-				if(typeof prop === "string" && el[prop]) {
-					return el[prop];
-				}
-				
-				return el.getAttribute(attrName);
-			},
-			// ## attr.remove
-			// Removes an attribute from an element. Works by using the `attr.map` to see if the attribute is a special type of property. If the property is a function then the fuction is called with `undefined` as the value. If the property is `true` then the attribute is set to false. If the property is a string then the attribute is set to an empty string. Otherwise `removeAttribute` is used.
-			//
-			// If the attribute previously had a value and the browser doesn't support MutationObservers we then trigger an "attributes" event.
-			remove: function (el, attrName) {
-				var oldValue;
-				if (!attr.MutationObserver) {
-					oldValue = attr.get(el, attrName);
-				}
-
-				var setter = attr.map[attrName];
-				if (typeof setter === "function") {
-					setter(el, undefined);
-				}
-				if (setter === true) {
-					el[attrName] = false;
-				} else if (typeof setter === "string") {
-					el[setter] = "";
-				} else {
-					el.removeAttribute(attrName);
-				}
-				if (!attr.MutationObserver && oldValue != null) {
-					attr.trigger(el, attrName, oldValue);
-				}
-
-			},
-			// ## attr.has
-			// Checks if an element contains an attribute.
-			// For browsers that support `hasAttribute`, creates a function that calls hasAttribute, otherwise creates a function that uses `getAttribute` to check that the attribute is not null.
-			has: (function () {
-				var el = document.createElement('div');
-				if (el.hasAttribute) {
-					return function (el, name) {
-						return el.hasAttribute(name);
-					};
-				} else {
-					return function (el, name) {
-						return el.getAttribute(name) !== null;
-					};
-				}
-			})()
-		};
-
-	return attr;
-
-});
-/*!
- * CanJS - 2.1.0
- * http://canjs.us/
- * Copyright (c) 2014 Bitovi
- * Mon, 05 May 2014 22:15:43 GMT
- * Licensed MIT
- * Includes: CanJS default build
- * Download from: http://canjs.us/
- */
-define('can/event',["can/util/can"], function (can) {
-	// ## can.event.addEvent
-	//
-	// Adds a basic event listener to an object.
-	// This consists of storing a cache of event listeners on each object,
-	// that are iterated through later when events are dispatched.
-	/**
-	 * @function can.event.addEvent
-	 * @parent can.event.static
-	 * @signature `obj.addEvent( event, handler )`
-	 *
-	 * Add a basic event listener to an object.
-	 *
-	 * @param {String} event The name of the event to listen for.
-	 * @param {Function} handler The handler that will be executed to handle the event.
-	 * @return {Object} this
-	 *
-	 * @signature `can.event.addEvent.call( obj, event, handler )`
-	 *
-	 * This syntax can be used for objects that don't include the `can.event` mixin.
-	 */
-	can.addEvent = function (event, handler) {
-		// Initialize event cache.
-		var allEvents = this.__bindEvents || (this.__bindEvents = {}),
-			eventList = allEvents[event] || (allEvents[event] = []);
-
-		// Add the event
-		eventList.push({
-			handler: handler,
-			name: event
-		});
-		return this;
-	};
-
-	// ## can.event.listenTo
-	//
-	// Listens to an event without know how bind is implemented.
-	// The primary use for this is to listen to another's objects event while 
-	// tracking events on the local object (similar to namespacing).
-	//
-	// The API was heavily influenced by BackboneJS: http://backbonejs.org/
-	/**
-	 * @function can.event.listenTo
-	 * @parent can.event.static
-	 * @signature `obj.listenTo( other, event, handler )`
-	 *
-	 * Listens for an event on another object.
-	 * This is similar to concepts like event namespacing, except that the namespace 
-	 * is the scope of the calling object.
-	 *
-	 * @param {Object} other The object to listen for events on.
-	 * @param {String} event The name of the event to listen for.
-	 * @param {Function} handler The handler that will be executed to handle the event.
-	 * @return {Object} this
-	 *
-	 * @signature `can.event.listenTo.call( obj, other, event, handler )`
-	 *
-	 * This syntax can be used for objects that don't include the `can.event` mixin.
-	 */
-	can.listenTo = function (other, event, handler) {
-		// Initialize event cache
-		var idedEvents = this.__listenToEvents;
-		if (!idedEvents) {
-			idedEvents = this.__listenToEvents = {};
-		}
-
-		// Identify the other object
-		var otherId = can.cid(other);
-		var othersEvents = idedEvents[otherId];
-		
-		// Create a local event cache
-		if (!othersEvents) {
-			othersEvents = idedEvents[otherId] = {
-				obj: other,
-				events: {}
-			};
-		}
-		var eventsEvents = othersEvents.events[event];
-		if (!eventsEvents) {
-			eventsEvents = othersEvents.events[event] = [];
-		}
-
-		// Add the event, both locally and to the other object
-		eventsEvents.push(handler);
-		can.bind.call(other, event, handler);
-	};
-
-	// ## can.event.stopListening
-	// 
-	// Stops listening for events on other objects
-	/**
-	 * @function can.event.stopListening
-	 * @parent can.event.static
-	 * @signature `obj.stopListening( other, event, handler )`
-	 *
-	 * Stops listening for an event on another object.
-	 *
-	 * @param {Object} other The object to listen for events on.
-	 * @param {String} event The name of the event to listen for.
-	 * @param {Function} handler The handler that will be executed to handle the event.
-	 * @return {Object} this
-	 *
-	 * @signature `can.event.stopListening.call( obj, other, event, handler )`
-	 *
-	 * This syntax can be used for objects that don't include the `can.event` mixin.
-	 */
-	can.stopListening = function (other, event, handler) {
-		var idedEvents = this.__listenToEvents,
-			iterIdedEvents = idedEvents,
-			i = 0;
-		if (!idedEvents) {
-			return this;
-		}
-		if (other) {
-			var othercid = can.cid(other);
-			(iterIdedEvents = {})[othercid] = idedEvents[othercid];
-			// you might be trying to listen to something that is not there
-			if (!idedEvents[othercid]) {
-				return this;
-			}
-		}
-
-		// Clean up events on the other object
-		for (var cid in iterIdedEvents) {
-			var othersEvents = iterIdedEvents[cid],
-				eventsEvents;
-			other = idedEvents[cid].obj;
-
-			// Find the cache of events
-			if (!event) {
-				eventsEvents = othersEvents.events;
-			} else {
-				(eventsEvents = {})[event] = othersEvents.events[event];
-			}
-
-			// Unbind event handlers, both locally and on the other object
-			for (var eventName in eventsEvents) {
-				var handlers = eventsEvents[eventName] || [];
-				i = 0;
-				while (i < handlers.length) {
-					if (handler && handler === handlers[i] || !handler) {
-						can.unbind.call(other, eventName, handlers[i]);
-						handlers.splice(i, 1);
-					} else {
-						i++;
-					}
-				}
-				// no more handlers?
-				if (!handlers.length) {
-					delete othersEvents.events[eventName];
-				}
-			}
-			if (can.isEmptyObject(othersEvents.events)) {
-				delete idedEvents[cid];
-			}
-		}
-		return this;
-	};
-
-	// ## can.event.removeEvent
-	//
-	// Removes a basic event listener from an object.
-	// This removes event handlers from the cache of listened events.
-	/**
-	 * @function can.event.removeEvent
-	 * @parent can.event.static
-	 * @signature `obj.removeEvent( event, handler )`
-	 *
-	 * Removes a basic event listener from an object.
-	 *
-	 * @param {String} event The name of the event to listen for.
-	 * @param {Function} handler The handler that will be executed to handle the event.
-	 * @param {Function} [__validate] An extra function that can validate an event handler 
-	 *                                as a match. This is an internal parameter and only used 
-	 *                                for `can/event` plugins.
-	 * @return {Object} this
-	 *
-	 * @signature `can.event.removeEvent.call( obj, event, handler )`
-	 *
-	 * This syntax can be used for objects that don't include the `can.event` mixin.
-	 */
-	can.removeEvent = function (event, fn, __validate) {
-		if (!this.__bindEvents) {
-			return this;
-		}
-		var events = this.__bindEvents[event] || [],
-			i = 0,
-			ev, isFunction = typeof fn === 'function';
-		while (i < events.length) {
-			ev = events[i];
-			// Determine whether this event handler is "equivalent" to the one requested
-			// Generally this requires the same event/function, but a validation function 
-			// can be included for extra conditions. This is used in some plugins like `can/event/namespace`.
-			if (__validate ? __validate(ev, event, fn) : isFunction && ev.handler === fn || !isFunction && (ev.cid === fn || !fn)) {
-				events.splice(i, 1);
-			} else {
-				i++;
-			}
-		}
-		return this;
-	};
-
-	// ## can.event.dispatch
-	//
-	// Dispatches/triggers a basic event on an object.
-	/**
-	 * @function can.event.dispatch
-	 * @parent can.event.static
-	 * @signature `obj.dispatch( event, args )`
-	 *
-	 * Dispatches/triggers a basic event on an object.
-	 *
-	 * @param {String|Object} event The event to dispatch
-	 * @param {Array} [args] Additional arguments to pass to event handlers
-	 * @return {Object} event The resulting event object
-	 *
-	 * @signature `can.event.dispatch.call( obj, event, args )`
-	 *
-	 * This syntax can be used for objects that don't include the `can.event` mixin.
-	 */
-	can.dispatch = function (event, args) {
-		var events = this.__bindEvents;
-		if (!events) {
-			return;
-		}
-
-		// Initialize the event object
-		if (typeof event === 'string') {
-			event = {
-				type: event
-			};
-		}
-
-		// Grab event listeners
-		var eventName = event.type,
-			handlers = (events[eventName] || []).slice(0);
-		
-		// Execute handlers listening for this event.
-		args = [event].concat(args || []);
-		for (var i = 0, len = handlers.length; i < len; i++) {
-			handlers[i].handler.apply(this, args);
-		}
-
-		return event;
-	};
-	
-	// ## can.event.one
-	//
-	// Adds a basic event listener that listens to an event once and only once.
-	/**
-	 * @function can.event.one
-	 * @parent can.event.static
-	 * @signature `obj.one( event, handler )`
-	 *
-	 * Adds a basic event listener that listens to an event once and only once.
-	 *
-	 * @param {String} event The name of the event to listen for.
-	 * @param {Function} handler The handler that will be executed to handle the event.
-	 * @return {Object} this
-	 */
-	can.one = function(event, handler) {
-		// Unbind the listener after it has been executed
-		var one = function() {
-			can.unbind.call(this, event, one);
-			return handler.apply(this, arguments);
-		};
-
-		// Bind the altered listener
-		can.bind.call(this, event, one);
-		return this;
-	};
-
-	// ## can.event
-	// Create and export the `can.event` mixin
-	can.event = {
-		// Event method aliases
-		/**
-		 * @function can.event.on
-		 * @parent can.event.static
-		 * @signature `obj.on( event, handler )`
-		 *
-		 * Add a basic event listener to an object.
-		 *
-		 * This is an alias of [can.event.addEvent addEvent].
-		 *
-		 * @signature `can.event.on.call( obj, event, handler )`
-		 *
-		 * This syntax can be used for objects that don't include the `can.event` mixin.
-		 */
-		on: can.addEvent,
-		/**
-		 * @function can.event.off
-		 * @parent can.event.static
-		 * @signature `obj.off( event, handler )`
-		 *
-		 * Removes a basic event listener from an object.
-		 *
-		 * This is an alias of [can.event.removeEvent removeEvent].
-		 *
-		 * @signature `can.event.off.call( obj, event, handler )`
-		 *
-		 * This syntax can be used for objects that don't include the `can.event` mixin.
-		 */
-		off: can.removeEvent,
-		/**
-		 * @function can.event.bind
-		 * @parent can.event.static
-		 * @signature `obj.bind( event, handler )`
-		 *
-		 * Add a basic event listener to an object.
-		 *
-		 * This is an alias of [can.event.addEvent addEvent].
-		 *
-		 * @signature `can.event.bind.call( obj, event, handler )`
-		 *
-		 * This syntax can be used for objects that don't include the `can.event` mixin.
-		 */
-		bind: can.addEvent,
-		/**
-		 * @function can.event.unbind
-		 * @parent can.event.static
-		 * @signature `obj.unbind( event, handler )`
-		 *
-		 * Removes a basic event listener from an object.
-		 *
-		 * This is an alias of [can.event.removeEvent removeEvent].
-		 *
-		 * @signature `can.event.unbind.call( obj, event, handler )`
-		 *
-		 * This syntax can be used for objects that don't include the `can.event` mixin.
-		 */
-		unbind: can.removeEvent,
-		/**
-		 * @function can.event.delegate
-		 * @parent can.event.static
-		 * @signature `obj.delegate( selector, event, handler )`
-		 *
-		 * Provides a compatibility layer for adding delegate event listeners.
-		 * This doesn't actually implement delegates, but rather allows 
-		 * logic that assumes a delegate to still function.
-		 *
-		 * Therefore, this is essentially an alias of [can.event.addEvent addEvent] with the selector ignored.
-		 *
-		 * @param {String} selector The **ignored** selector to use for the delegate.
-		 * @param {String} event The name of the event to listen for.
-		 * @param {Function} handler The handler that will be executed to handle the event.
-		 * @return {Object} this
-		 *
-		 * @signature `can.event.delegate.call( obj, selector, event, handler )`
-		 *
-		 * This syntax can be used for objects that don't include the `can.event` mixin.
-		 */
-		delegate: function(selector, event, handler) {
-			return can.addEvent.call(event, handler);
-		},
-		/**
-		 * @function can.event.undelegate
-		 * @parent can.event.static
-		 * @signature `obj.undelegate( selector, event, handler )`
-		 *
-		 * Provides a compatibility layer for removing delegate event listeners.
-		 * This doesn't actually implement delegates, but rather allows 
-		 * logic that assumes a delegate to still function.
-		 *
-		 * Therefore, this is essentially an alias of [can.event.removeEvent removeEvent] with the selector ignored.
-		 *
-		 * @param {String} selector The **ignored** selector to use for the delegate.
-		 * @param {String} event The name of the event to listen for.
-		 * @param {Function} handler The handler that will be executed to handle the event.
-		 * @return {Object} this
-		 *
-		 * @signature `can.event.undelegate.call( obj, selector, event, handler )`
-		 *
-		 * This syntax can be used for objects that don't include the `can.event` mixin.
-		 */
-		undelegate: function(selector, event, handler) {
-			return can.removeEvent.call(event, handler);
-		},
-		/**
-		 * @function can.event.trigger
-		 * @parent can.event.static
-		 * @signature `obj.trigger( event, args )`
-		 *
-		 * Dispatches/triggers a basic event on an object.
-		 * This is an alias of [can.event.dispatch dispatch].
-		 *
-		 * @signature `can.event.trigger.call( obj, event, args )`
-		 *
-		 * This syntax can be used for objects that don't include the `can.event` mixin.
-		 */
-		trigger: can.dispatch,
-
-		// Normal can/event methods
-		one: can.one,
-		addEvent: can.addEvent,
-		removeEvent: can.removeEvent,
-		listenTo: can.listenTo,
-		stopListening: can.stopListening,
-		dispatch: can.dispatch
-	};
-
-	return can.event;
-});
-/*!
- * CanJS - 2.1.0
- * http://canjs.us/
- * Copyright (c) 2014 Bitovi
- * Mon, 05 May 2014 22:15:43 GMT
- * Licensed MIT
- * Includes: CanJS default build
- * Download from: http://canjs.us/
- */
-define('can/util/array/each',["can/util/can"], function (can) {
-	
-	// The following is from jQuery
-	var isArrayLike = function(obj){
-		var length = obj.length;
-		return typeof arr !== "function" &&
-			( length === 0 || typeof length === "number" && length > 0 && ( length - 1 ) in obj );
-	};
-	
-	can.each = function (elements, callback, context) {
-		var i = 0,
-			key,
-			len,
-			item;
-		if (elements) {
-			if ( isArrayLike(elements) ) {
-				if(can.List && elements instanceof can.List ) {
-					for (len = elements.attr("length"); i < len; i++) {
-						item = elements.attr(i);
-						if (callback.call(context || item, item, i, elements) === false) {
-							break;
-						}
-					}
-				} else {
-					for (len = elements.length; i < len; i++) {
-						item = elements[i];
-						if (callback.call(context || item, item, i, elements) === false) {
-							break;
-						}
-					}
-				}
-				
-			} else if (typeof elements === "object") {
-				
-				if (can.Map && elements instanceof can.Map || elements === can.route) {
-					var keys = can.Map.keys(elements);
-					for(i =0, len = keys.length; i < len; i++) {
-						key = keys[i];
-						item = elements.attr(key);
-						if (callback.call(context || item, item, key, elements) === false) {
-							break;
-						}
-					}
-				} else {
-					for (key in elements) {
-						if (elements.hasOwnProperty(key) && callback.call(context || elements[key], elements[key], key, elements) === false) {
-							break;
-						}
-					}
-				}
-				
-			}
-		}
-		return elements;
-	};
-	return can;
-});
-/*!
- * CanJS - 2.1.0
- * http://canjs.us/
- * Copyright (c) 2014 Bitovi
- * Mon, 05 May 2014 22:15:43 GMT
- * Licensed MIT
- * Includes: CanJS default build
- * Download from: http://canjs.us/
- */
-define('can/util/inserted',["can/util/can"], function (can) {
-	can.inserted = function (elems) {
-		// Turn the `elems` property into an array to prevent mutations from changing the looping.
-		elems = can.makeArray(elems);
-		var inDocument = false,
-			// Gets the `doc` to use as a reference for finding out whether the element is in the document.
-			doc = can.$(document.contains ? document : document.body),
-			children;
-		// Go through `elems` and trigger the `inserted` event.
-		// If the first element is not in the document (a Document Fragment) it will exit the function. If it is in the document it sets the `inDocument` flag to true. This means that we only check for the first element and either exit the function or start triggering "inserted" for child elements.
-		for (var i = 0, elem;
-			(elem = elems[i]) !== undefined; i++) {
-			if (!inDocument) {
-				if (elem.getElementsByTagName) {
-					if (can.has(doc, elem)
-						.length) {
-						inDocument = true;
-					} else {
-						return;
-					}
-				} else {
-					continue;
-				}
-			}
-
-			// If we've found an element in the document then we can now trigger **"inserted"** for `elem` and all of its children. We are using `getElementsByTagName("*")` so that we grab all of the descendant nodes.
-			if (inDocument && elem.getElementsByTagName) {
-				children = can.makeArray(elem.getElementsByTagName("*"));
-				can.trigger(elem, "inserted", [], false);
-				for (var j = 0, child;
-					(child = children[j]) !== undefined; j++) {
-					can.trigger(child, "inserted", [], false);
-				}
-			}
-		}
-	};
-
-	// ## can.appendChild
-	// Used to append a node to an element and trigger the "inserted" event on all of the newly inserted children. Since `can.inserted` takes an array we convert the child to an array, or in the case of a DocumentFragment we first convert the childNodes to an array and call inserted on those.
-	can.appendChild = function (el, child) {
-		var children;
-		if (child.nodeType === 11) {
-			children = can.makeArray(child.childNodes);
-		} else {
-			children = [child];
-		}
-		el.appendChild(child);
-		can.inserted(children);
-	};
-
-	// ## can.insertBefore
-	// Like can.appendChild, used to insert a node to an element before a reference node and then trigger the "inserted" event.
-	can.insertBefore = function (el, child, ref) {
-		var children;
-		if (child.nodeType === 11) {
-			children = can.makeArray(child.childNodes);
-		} else {
-			children = [child];
-		}
-		el.insertBefore(child, ref);
-		can.inserted(children);
-	};
-});
-/*!
- * CanJS - 2.1.0
- * http://canjs.us/
- * Copyright (c) 2014 Bitovi
- * Mon, 05 May 2014 22:15:43 GMT
- * Licensed MIT
- * Includes: CanJS default build
- * Download from: http://canjs.us/
- */
-define('can/util/jquery',["jquery", "can/util/can", "can/util/attr", "can/event", "can/util/array/each", "can/util/inserted"], function ($, can, attr, event) {
-	var isBindableElement = function (node) {
-		// In IE8 window.window !== window.window, so we allow == here.
-		/*jshint eqeqeq:false*/
-		return ( node.nodeName && (node.nodeType === 1 || node.nodeType === 9) )|| node == window;
-	};
-	// _jQuery node list._
-	$.extend(can, $, {
-		trigger: function (obj, event, args, bubbles) {
-			if (isBindableElement( obj ) ) {
-				$.event.trigger(event, args, obj, !bubbles);
-			} else if (obj.trigger) {
-				obj.trigger(event, args);
-			} else {
-				if (typeof event === 'string') {
-					event = {
-						type: event
-					};
-				}
-				event.target = event.target || obj;
-				can.dispatch.call(obj, event, args);
-			}
-		},
-		event: can.event,
-		addEvent: can.addEvent,
-		removeEvent: can.removeEvent,
-		buildFragment: function (elems, context) {
-			// Check if this has any html nodes on our own.
-			var ret;
-			elems = [elems];
-			// Set context per 1.8 logic
-			context = context || document;
-			context = !context.nodeType && context[0] || context;
-			context = context.ownerDocument || context;
-			ret = $.buildFragment(elems, context);
-			return ret.cacheable ? $.clone(ret.fragment) : ret.fragment || ret;
-		},
-		$: $,
-		each: can.each,
-		bind: function (ev, cb) {
-			// If we can bind to it...
-			if (this.bind && this.bind !== can.bind) {
-				this.bind(ev, cb);
-			} else if (isBindableElement(this)) {
-				$.event.add(this, ev, cb);
-			} else {
-				// Make it bind-able...
-				can.addEvent.call(this, ev, cb);
-			}
-			return this;
-		},
-		unbind: function (ev, cb) {
-			// If we can bind to it...
-			if (this.unbind && this.unbind !== can.unbind) {
-				this.unbind(ev, cb);
-			} else if (isBindableElement(this)) {
-				$.event.remove(this, ev, cb);
-			} else {
-				// Make it bind-able...
-				can.removeEvent.call(this, ev, cb);
-			}
-			return this;
-		},
-		delegate: function (selector, ev, cb) {
-			if (this.delegate) {
-				this.delegate(selector, ev, cb);
-			} else if (isBindableElement(this)) {
-				$(this)
-					.delegate(selector, ev, cb);
-			} else {
-				// make it bind-able ...
-				can.bind.call(this, ev, cb);
-			}
-			return this;
-		},
-		undelegate: function (selector, ev, cb) {
-			if (this.undelegate) {
-				this.undelegate(selector, ev, cb);
-			} else if (isBindableElement(this)) {
-				$(this)
-					.undelegate(selector, ev, cb);
-			} else {
-				can.unbind.call(this, ev, cb);
-			}
-			return this;
-		},
-		proxy: function (fn, context) {
-			return function () {
-				return fn.apply(context, arguments);
-			};
-		},
-		attr: attr
-	});
-	// Wrap binding functions.
-	/*$.each(['bind','unbind','undelegate','delegate'],function(i,func){
-		can[func] = function(){
-			var t = this[func] ? this : $([this]);
-			t[func].apply(t, arguments);
-			return this;
-		};
-	});*/
-	// Aliases
-	can.on = can.bind;
-	can.off = can.unbind;
-	// Wrap modifier functions.
-	$.each([
-		'append',
-		'filter',
-		'addClass',
-		'remove',
-		'data',
-		'get',
-		'has'
-	], function (i, name) {
-		can[name] = function (wrapped) {
-			return wrapped[name].apply(wrapped, can.makeArray(arguments)
-				.slice(1));
-		};
-	});
-	// Memory safe destruction.
-	var oldClean = $.cleanData;
-	$.cleanData = function (elems) {
-		$.each(elems, function (i, elem) {
-			if (elem) {
-				can.trigger(elem, 'removed', [], false);
-			}
-		});
-		oldClean(elems);
-	};
-	var oldDomManip = $.fn.domManip,
-		cbIndex;
-	// feature detect which domManip we are using
-	$.fn.domManip = function (args, cb1, cb2) {
-		for (var i = 1; i < arguments.length; i++) {
-			if (typeof arguments[i] === 'function') {
-				cbIndex = i;
-				break;
-			}
-		}
-		return oldDomManip.apply(this, arguments);
-	};
-	$(document.createElement("div"))
-		.append(document.createElement("div"));
-
-	$.fn.domManip = (cbIndex === 2 ?
-		function (args, table, callback) {
-			return oldDomManip.call(this, args, table, function (elem) {
-				var elems;
-				if (elem.nodeType === 11) {
-					elems = can.makeArray(elem.childNodes);
-				}
-				var ret = callback.apply(this, arguments);
-				can.inserted(elems ? elems : [elem]);
-				return ret;
-			});
-		} :
-		function (args, callback) {
-			return oldDomManip.call(this, args, function (elem) {
-				var elems;
-				if (elem.nodeType === 11) {
-					elems = can.makeArray(elem.childNodes);
-				}
-				var ret = callback.apply(this, arguments);
-				can.inserted(elems ? elems : [elem]);
-				return ret;
-			});
-		});
-
-	if (!can.attr.MutationObserver) {
-		// handle via calls to attr
-		var oldAttr = $.attr;
-		$.attr = function (el, attrName) {
-			var oldValue, newValue;
-			if (arguments.length >= 3) {
-				oldValue = oldAttr.call(this, el, attrName);
-			}
-			var res = oldAttr.apply(this, arguments);
-			if (arguments.length >= 3) {
-				newValue = oldAttr.call(this, el, attrName);
-			}
-			if (newValue !== oldValue) {
-				can.attr.trigger(el, attrName, oldValue);
-			}
-			return res;
-		};
-		var oldRemove = $.removeAttr;
-		$.removeAttr = function (el, attrName) {
-			var oldValue = oldAttr.call(this, el, attrName),
-				res = oldRemove.apply(this, arguments);
-
-			if (oldValue != null) {
-				can.attr.trigger(el, attrName, oldValue);
-			}
-			return res;
-		};
-		$.event.special.attributes = {
-			setup: function () {
-				can.data(can.$(this), "canHasAttributesBindings", true);
-			},
-			teardown: function () {
-				$.removeData(this, "canHasAttributesBindings");
-			}
-		};
-	} else {
-		// setup a special events
-		$.event.special.attributes = {
-			setup: function () {
-				var self = this;
-				var observer = new can.attr.MutationObserver(function (mutations) {
-					mutations.forEach(function (mutation) {
-						var copy = can.simpleExtend({}, mutation);
-						can.trigger(self, copy, []);
-					});
-
-				});
-				observer.observe(this, {
-					attributes: true,
-					attributeOldValue: true
-				});
-				can.data(can.$(this), "canAttributesObserver", observer);
-			},
-			teardown: function () {
-				can.data(can.$(this), "canAttributesObserver")
-					.disconnect();
-				$.removeData(this, "canAttributesObserver");
-
-			}
-		};
-	}
-	
-	// ## Fix build fragment.
-	// In IE8, we can pass jQuery a fragment and it removes newlines.
-	// This checks for that and replaces can.buildFragment with something
-	// that if only a single text node is returned, returns a fragment with
-	// a text node that is set to the content.
-	(function(){
-		
-		var text = "<-\n>",
-			frag = can.buildFragment(text, document);
-		if(text !== frag.childNodes[0].nodeValue) {
-			
-			var oldBuildFragment  = can.buildFragment;
-			can.buildFragment = function(content, context){
-				var res = oldBuildFragment(content, context);
-				if(res.childNodes.length === 1 && res.childNodes[0].nodeType === 3) {
-					res.childNodes[0].nodeValue = content;
-				}
-				return res;
-			};
-			
-		}
-		
-		
-		
-	})();
-
-	$.event.special.inserted = {};
-	$.event.special.removed = {};
-	return can;
-});
-/*!
- * CanJS - 2.1.0
- * http://canjs.us/
- * Copyright (c) 2014 Bitovi
- * Mon, 05 May 2014 22:15:43 GMT
- * Licensed MIT
- * Includes: CanJS default build
- * Download from: http://canjs.us/
- */
-define('can/util/library',["can/util/jquery"], function (can) {
-	return can;
-});
-/*!
- * CanJS - 2.1.0
- * http://canjs.us/
- * Copyright (c) 2014 Bitovi
- * Mon, 05 May 2014 22:15:43 GMT
- * Licensed MIT
- * Includes: CanJS default build
- * Download from: http://canjs.us/
- */
-define('can/util/string',["can/util/library"], function (can) {
-	// ##string.js
-	// _Miscellaneous string utility functions._  
-	// Several of the methods in this plugin use code adapated from Prototype
-	// Prototype JavaScript framework, version 1.6.0.1.
-	// © 2005-2007 Sam Stephenson
-	var strUndHash = /_|-/,
-		strColons = /\=\=/,
-		strWords = /([A-Z]+)([A-Z][a-z])/g,
-		strLowUp = /([a-z\d])([A-Z])/g,
-		strDash = /([a-z\d])([A-Z])/g,
-		strReplacer = /\{([^\}]+)\}/g,
-		strQuote = /"/g,
-		strSingleQuote = /'/g,
-		strHyphenMatch = /-+(.)?/g,
-		strCamelMatch = /[a-z][A-Z]/g,
-		// Returns the `prop` property from `obj`.
-		// If `add` is true and `prop` doesn't exist in `obj`, create it as an
-		// empty object.
-		getNext = function (obj, prop, add) {
-			var result = obj[prop];
-			if (result === undefined && add === true) {
-				result = obj[prop] = {};
-			}
-			return result;
-		},
-		// Returns `true` if the object can have properties (no `null`s).
-		isContainer = function (current) {
-			return /^f|^o/.test(typeof current);
-		}, convertBadValues = function (content) {
-			// Convert bad values into empty strings
-			var isInvalid = content === null || content === undefined || isNaN(content) && '' + content === 'NaN';
-			return '' + (isInvalid ? '' : content);
-		};
-	can.extend(can, {
-		esc: function (content) {
-			return convertBadValues(content)
-				.replace(/&/g, '&amp;')
-				.replace(/</g, '&lt;')
-				.replace(/>/g, '&gt;')
-				.replace(strQuote, '&#34;')
-				.replace(strSingleQuote, '&#39;');
-		},
-		getObject: function (name, roots, add) {
-			// The parts of the name we are looking up
-			// `['App','Models','Recipe']`
-			var parts = name ? name.split('.') : [],
-				length = parts.length,
-				current, r = 0,
-				i, container, rootsLength;
-			// Make sure roots is an `array`.
-			roots = can.isArray(roots) ? roots : [roots || window];
-			rootsLength = roots.length;
-			if (!length) {
-				return roots[0];
-			}
-			// For each root, mark it as current.
-			for (r; r < rootsLength; r++) {
-				current = roots[r];
-				container = undefined;
-				// Walk current to the 2nd to last object or until there
-				// is not a container.
-				for (i = 0; i < length && isContainer(current); i++) {
-					container = current;
-					current = getNext(container, parts[i]);
-				}
-				// If we found property break cycle
-				if (container !== undefined && current !== undefined) {
-					break;
-				}
-			}
-			// Remove property from found container
-			if (add === false && current !== undefined) {
-				delete container[parts[i - 1]];
-			}
-			// When adding property add it to the first root
-			if (add === true && current === undefined) {
-				current = roots[0];
-				for (i = 0; i < length && isContainer(current); i++) {
-					current = getNext(current, parts[i], true);
-				}
-			}
-			return current;
-		},
-		capitalize: function (s, cache) {
-			// Used to make newId.
-			return s.charAt(0)
-				.toUpperCase() + s.slice(1);
-		},
-		camelize: function (str) {
-			return convertBadValues(str)
-				.replace(strHyphenMatch, function (match, chr) {
-					return chr ? chr.toUpperCase() : '';
-				});
-		},
-		hyphenate: function (str) {
-			return convertBadValues(str)
-				.replace(strCamelMatch, function (str, offset) {
-					return str.charAt(0) + '-' + str.charAt(1)
-						.toLowerCase();
-				});
-		},
-		underscore: function (s) {
-			return s.replace(strColons, '/')
-				.replace(strWords, '$1_$2')
-				.replace(strLowUp, '$1_$2')
-				.replace(strDash, '_')
-				.toLowerCase();
-		},
-		sub: function (str, data, remove) {
-			var obs = [];
-			str = str || '';
-			obs.push(str.replace(strReplacer, function (whole, inside) {
-				// Convert inside to type.
-				var ob = can.getObject(inside, data, remove === true ? false : undefined);
-				if (ob === undefined || ob === null) {
-					obs = null;
-					return '';
-				}
-				// If a container, push into objs (which will return objects found).
-				if (isContainer(ob) && obs) {
-					obs.push(ob);
-					return '';
-				}
-				return '' + ob;
-			}));
-			return obs === null ? obs : obs.length <= 1 ? obs[0] : obs;
-		},
-		replacer: strReplacer,
-		undHash: strUndHash
-	});
-	return can;
-});
-/*!
- * CanJS - 2.1.0
- * http://canjs.us/
- * Copyright (c) 2014 Bitovi
- * Mon, 05 May 2014 22:15:43 GMT
- * Licensed MIT
- * Includes: CanJS default build
- * Download from: http://canjs.us/
- */
-define('can/construct',["can/util/string"], function (can) {
-	// ## construct.js
-	// `can.Construct`  
-	// _This is a modified version of
-	// [John Resig's class](http://ejohn.org/blog/simple-javascript-inheritance/).  
-	// It provides class level inheritance and callbacks._
-	// A private flag used to initialize a new class instance without
-	// initializing it's bindings.
-	var initializing = 0;
-	/**
-	 * @add can.Construct
-	 */
-	can.Construct = function () {
-		if (arguments.length) {
-			return can.Construct.extend.apply(can.Construct, arguments);
-		}
-	};
-	/**
-	 * @static
-	 */
-	can.extend(can.Construct, {
-		/**
-		 * @property {Boolean} can.Construct.constructorExtends constructorExtends
-		 * @parent can.Construct.static
-		 *
-		 * @description
-		 *
-		 * Toggles the behavior of a constructor function called
-		 * without `new` to extend the constructor function or
-		 * create a new instance.
-		 *
-		 * @body
-		 *
-		 * If `constructorExtends` is:
-		 *
-		 *  - `true` - the constructor extends
-		 *  - `false` - a new instance of the constructor is created
-		 *
-		 * For 1.1, `constructorExtends` defaults to true. For
-		 * 1.2, `constructorExtends` will default to false.
-		 */
-		constructorExtends: true,
-		/**
-		 * @function can.Construct.newInstance newInstance
-		 * @parent can.Construct.static
-		 *
-		 * @description Returns an instance of `can.Construct`. This method
-		 * can be overridden to return a cached instance.
-		 *
-		 * @signature `can.Construct.newInstance([...args])`
-		 *
-		 * @param {*} [args] arguments that get passed to [can.Construct::setup] and [can.Construct::init]. Note
-		 * that if [can.Construct::setup] returns an array, those arguments will be passed to [can.Construct::init]
-		 * instead.
-		 * @return {class} instance of the class
-		 *
-		 * @body
-		 * Creates a new instance of the constructor function. This method is useful for creating new instances
-		 * with arbitrary parameters. Typically, however, you will simply want to call the constructor with the
-		 * __new__ operator.
-		 *
-		 * ## Example
-		 *
-		 * The following creates a `Person` Construct and then creates a new instance of Person,
-		 * using `apply` on newInstance to pass arbitrary parameters.
-		 *
-		 * @codestart
-		 * var Person = can.Construct.extend({
-		 *   init : function(first, middle, last) {
-		 *     this.first = first;
-		 *     this.middle = middle;
-		 *     this.last = last;
-		 *   }
-		 * });
-		 *
-		 * var args = ["Justin","Barry","Meyer"],
-		 *     justin = new Person.newInstance.apply(null, args);
-		 * @codeend
-		 */
-		newInstance: function () {
-			// Get a raw instance object (`init` is not called).
-			var inst = this.instance(),
-				args;
-			// Call `setup` if there is a `setup`
-			if (inst.setup) {
-				args = inst.setup.apply(inst, arguments);
-			}
-			// Call `init` if there is an `init`  
-			// If `setup` returned `args`, use those as the arguments
-			if (inst.init) {
-				inst.init.apply(inst, args || arguments);
-			}
-			return inst;
-		},
-		// Overwrites an object with methods. Used in the `super` plugin.
-		// `newProps` - New properties to add.
-		// `oldProps` - Where the old properties might be (used with `super`).
-		// `addTo` - What we are adding to.
-		_inherit: function (newProps, oldProps, addTo) {
-			can.extend(addTo || newProps, newProps || {});
-		},
-		// used for overwriting a single property.
-		// this should be used for patching other objects
-		// the super plugin overwrites this
-		_overwrite: function (what, oldProps, propName, val) {
-			what[propName] = val;
-		},
-		// Set `defaults` as the merger of the parent `defaults` and this
-		// object's `defaults`. If you overwrite this method, make sure to
-		// include option merging logic.
-		/**
-		 * @function can.Construct.setup setup
-		 * @parent can.Construct.static
-		 *
-		 * @description Perform initialization logic for a constructor function.
-		 *
-		 * @signature `can.Construct.setup(base, fullName, staticProps, protoProps)`
-		 *
-		 * A static `setup` method provides inheritable setup functionality
-		 * for a Constructor function. The following example
-		 * creates a Group constructor function.  Any constructor
-		 * functions that inherit from Group will be added to
-		 * `Group.childGroups`.
-		 *
-		 *
-		 *     Group = can.Construct.extend({
-		 *       setup: function(Construct, fullName, staticProps, protoProps){
-		 *         this.childGroups = [];
-		 *         if(Construct !== can.Construct){
-		 *           this.childGroups(Construct)
-		 *         }
-		 *         Construct.setup.apply(this, arguments)
-		 *       }
-		 *     },{})
-		 *     var Flock = Group.extend(...)
-		 *     Group.childGroups[0] //-> Flock
-		 *
-		 * @param {constructor} base The base constructor that is being inherited from.
-		 * @param {String} fullName The name of the new constructor.
-		 * @param {Object} staticProps The static properties of the new constructor.
-		 * @param {Object} protoProps The prototype properties of the new constructor.
-		 *
-		 * @body
-		 * The static `setup` method is called immediately after a constructor
-		 * function is created and
-		 * set to inherit from its base constructor. It is useful for setting up
-		 * additional inheritance work.
-		 * Do not confuse this with the prototype `[can.Construct::setup]` method.
-		 *
-		 * ## Setup Extends Defaults
-		 *
-		 * Setup deeply extends the static `defaults` property of the base constructor with
-		 * properties of the inheriting constructor.  For example:
-		 *
-		 * @codestart
-		 * Parent = can.Construct.extend({
-		 *   defaults : {
-		 *     parentProp: 'foo'
-		 *   }
-		 * },{})
-		 *
-		 * Child = Parent.extend({
-		 *   defaults : {
-		 *     childProp : 'bar'
-		 *   }
-		 * },{}
-		 *
-		 * Child.defaults // {parentProp: 'foo', 'childProp': 'bar'}
-		 * @codeend
-		 *
-		 * ## Example
-		 *
-		 * This `Parent` class adds a reference to its base class to itself, and
-		 * so do all the classes that inherit from it.
-		 *
-		 * @codestart
-		 * Parent = can.Construct.extend({
-		 *   setup : function(base, fullName, staticProps, protoProps){
-		 *     this.base = base;
-		 *
-		 *     // call base functionality
-		 *     can.Construct.setup.apply(this, arguments)
-		 *   }
-		 * },{});
-		 *
-		 * Parent.base; // can.Construct
-		 *
-		 * Child = Parent({});
-		 *
-		 * Child.base; // Parent
-		 * @codeend
-		 */
-		setup: function (base, fullName) {
-			this.defaults = can.extend(true, {}, base.defaults, this.defaults);
-		},
-		// Create's a new `class` instance without initializing by setting the
-		// `initializing` flag.
-		instance: function () {
-			// Prevents running `init`.
-			initializing = 1;
-			var inst = new this();
-			// Allow running `init`.
-			initializing = 0;
-			return inst;
-		},
-		// Extends classes.
-		/**
-		 * @function can.Construct.extend extend
-		 * @parent can.Construct.static
-		 *
-		 * @signature `can.Construct.extend([name,] [staticProperties,] instanceProperties)`
-		 *
-		 * Extends `can.Construct`, or constructor functions derived from `can.Construct`,
-		 * to create a new constructor function. Example:
-		 *
-		 *     Animal = can.Construct.extend({
-		 *       sayHi: function(){
-		 *         console.log("hi")
-		 *       }
-		 *     })
-		 *     var animal = new Animal()
-		 *     animal.sayHi();
-		 *
-		 * @param {String} [name] Creates the necessary properties and
-		 * objects that point from the `window` to the created constructor function. The following:
-		 *
-		 *     can.Construct.extend("company.project.Constructor",{})
-		 *
-		 * creates a `company` object on window if it does not find one, a
-		 * `project` object on `company` if it does not find one, and it will set the
-		 * `Constructor` property on the `project` object to point to the constructor function.
-		 *
-		 * Finally, it sets "company.project.Constructor" as [can.Construct.fullName fullName]
-		 * and "Constructor" as [can.Construct.shortName shortName].
-		 *
-		 * @param {Object} [staticProperties] Properties that are added the constructor
-		 * function directly. For example:
-		 *
-		 *     Animal = can.Construct.extend({
-		 *       findAll: function(){
-		 *         return can.ajax({url: "/animals"})
-		 *       }
-		 *     },{});
-		 *
-		 *     Animal.findAll().then(function(json){ ... })
-		 *
-		 * The [can.Construct.setup static setup] method can be used to
-		 * specify inheritable behavior when a Constructor function is created.
-		 *
-		 * @param {Object} instanceProperties Properties that belong to
-		 * instances made with the constructor. These properties are added to the
-		 * constructor's `prototype` object. Example:
-		 *
-		 *     Animal = can.Construct.extend({
-		 *       init: function(name){
-		 *         this.name = name;
-		 *       },
-		 *       sayHi: function(){
-		 *         console.log(this.name,"says hi")
-		 *       }
-		 *     })
-		 *     var animal = new Animal()
-		 *     animal.sayHi();
-		 *
-		 * The [can.Construct::init init] and [can.Construct::setup setup] properties
-		 * are used for initialization.
-		 *
-		 * @return {function} The constructor function.
-		 *
-		 */
-		extend: function (fullName, klass, proto) {
-			// Figure out what was passed and normalize it.
-			if (typeof fullName !== 'string') {
-				proto = klass;
-				klass = fullName;
-				fullName = null;
-			}
-			if (!proto) {
-				proto = klass;
-				klass = null;
-			}
-			proto = proto || {};
-			var _super_class = this,
-				_super = this.prototype,
-				parts, current, _fullName, _shortName, name, shortName, namespace, prototype;
-			// Instantiate a base class (but only create the instance,
-			// don't run the init constructor).
-			prototype = this.instance();
-			// Copy the properties over onto the new prototype.
-			can.Construct._inherit(proto, _super, prototype);
-			// The dummy class constructor.
-			function Constructor() {
-				// All construction is actually done in the init method.
-				if (!initializing) {
-				
-					
-					return this.constructor !== Constructor &&
-					// We are being called without `new` or we are extending.
-					arguments.length && Constructor.constructorExtends ? Constructor.extend.apply(Constructor, arguments) :
-					// We are being called with `new`.
-					Constructor.newInstance.apply(Constructor, arguments);
-				}
-			}
-			// Copy old stuff onto class (can probably be merged w/ inherit)
-			for (name in _super_class) {
-				if (_super_class.hasOwnProperty(name)) {
-					Constructor[name] = _super_class[name];
-				}
-			}
-			// Copy new static properties on class.
-			can.Construct._inherit(klass, _super_class, Constructor);
-			// Setup namespaces.
-			if (fullName) {
-
-				parts = fullName.split('.');
-				shortName = parts.pop();
-				current = can.getObject(parts.join('.'), window, true);
-				namespace = current;
-				_fullName = can.underscore(fullName.replace(/\./g, "_"));
-				_shortName = can.underscore(shortName);
-
-			
-
-				current[shortName] = Constructor;
-			}
-			// Set things that shouldn't be overwritten.
-			can.extend(Constructor, {
-				constructor: Constructor,
-				prototype: prototype,
-				/**
-				 * @property {String} can.Construct.namespace namespace
-				 * @parent can.Construct.static
-				 *
-				 * The `namespace` property returns the namespace your constructor is in.
-				 * This provides a way organize code and ensure globally unique types. The
-				 * `namespace` is the [can.Construct.fullName fullName] you passed without the [can.Construct.shortName shortName].
-				 *
-				 * @codestart
-				 * can.Construct("MyApplication.MyConstructor",{},{});
-				 * MyApplication.MyConstructor.namespace // "MyApplication"
-				 * MyApplication.MyConstructor.shortName // "MyConstructor"
-				 * MyApplication.MyConstructor.fullName  // "MyApplication.MyConstructor"
-				 * @codeend
-				 */
-				namespace: namespace,
-				/**
-				 * @property {String} can.Construct.shortName shortName
-				 * @parent can.Construct.static
-				 *
-				 * If you pass a name when creating a Construct, the `shortName` property will be set to the
-				 * name you passed without the [can.Construct.namespace namespace].
-				 *
-				 * @codestart
-				 * can.Construct("MyApplication.MyConstructor",{},{});
-				 * MyApplication.MyConstructor.namespace // "MyApplication"
-				 * MyApplication.MyConstructor.shortName // "MyConstructor"
-				 * MyApplication.MyConstructor.fullName  // "MyApplication.MyConstructor"
-				 * @codeend
-				 */
-				_shortName: _shortName,
-				/**
-				 * @property {String} can.Construct.fullName fullName
-				 * @parent can.Construct.static
-				 *
-				 * If you pass a name when creating a Construct, the `fullName` property will be set to
-				 * the name you passed. The `fullName` consists of the [can.Construct.namespace namespace] and
-				 * the [can.Construct.shortName shortName].
-				 *
-				 * @codestart
-				 * can.Construct("MyApplication.MyConstructor",{},{});
-				 * MyApplication.MyConstructor.namespace // "MyApplication"
-				 * MyApplication.MyConstructor.shortName // "MyConstructor"
-				 * MyApplication.MyConstructor.fullName  // "MyApplication.MyConstructor"
-				 * @codeend
-				 */
-				fullName: fullName,
-				_fullName: _fullName
-			});
-			// Dojo and YUI extend undefined
-			if (shortName !== undefined) {
-				Constructor.shortName = shortName;
-			}
-			// Make sure our prototype looks nice.
-			Constructor.prototype.constructor = Constructor;
-			// Call the class `setup` and `init`
-			var t = [_super_class].concat(can.makeArray(arguments)),
-				args = Constructor.setup.apply(Constructor, t);
-			if (Constructor.init) {
-				Constructor.init.apply(Constructor, args || t);
-			}
-			/**
-			 * @prototype
-			 */
-			return Constructor; //  
-			/**
-			 * @property {Object} can.Construct.prototype.constructor constructor
-			 * @parent can.Construct.prototype
-			 *
-			 * A reference to the constructor function that created the instance. This allows you to access
-			 * the constructor's static properties from an instance.
-			 *
-			 * ## Example
-			 *
-			 * This can.Construct has a static counter that counts how many instances have been created:
-			 *
-			 * @codestart
-			 * can.Construct.extend("Counter", {
-			 *     count: 0
-			 * }, {
-			 *     init: function() {
-			 *         this.constructor.count++;
-			 *     }
-			 * });
-			 *
-			 * new Counter();
-			 * Counter.count; // 1
-			 * @codeend
-			 */
-		}
-	});
-	/**
-	 * @function can.Construct.prototype.setup setup
-	 * @parent can.Construct.prototype
-	 *
-	 * @signature `construct.setup(...args)`
-	 *
-	 * A setup function for the instantiation of a constructor function.
-	 *
-	 * @param {*} args The arguments passed to the constructor.
-	 *
-	 * @return {Array|undefined} If an array is returned, the array's items are passed as
-	 * arguments to [can.Construct::init init]. The following example always makes
-	 * sure that init is called with a jQuery wrapped element:
-	 *
-	 *     WidgetFactory = can.Construct.extend({
-	 *         setup: function(element){
-	 *             return [$(element)]
-	 *         }
-	 *     })
-	 *
-	 *     MyWidget = WidgetFactory.extend({
-	 *         init: function($el){
-	 *             $el.html("My Widget!!")
-	 *         }
-	 *     })
-	 *
-	 * Otherwise, the arguments to the
-	 * constructor are passed to [can.Construct::init] and the return value of `setup` is discarded.
-	 *
-	 * @body
-	 *
-	 * ## Deciding between `setup` and `init`
-	 *
-	 *
-	 * Usually, you should use [can.Construct::init init] to do your constructor function's initialization.
-	 * Use `setup` instead for:
-	 *
-	 *   - initialization code that you want to run before the inheriting constructor's
-	 *     `init` method is called.
-	 *   - initialization code that should run whether or not inheriting constructors
-	 *     call their base's `init` methods.
-	 *   - modifying the arguments that will get passed to `init`.
-	 *
-	 * ## Example
-	 *
-	 * This code is a simplified version of the code in [can.Control]'s setup
-	 * method. It converts the first argument to a jQuery collection and
-	 * extends the controller's defaults with the options that were passed.
-	 *
-	 *
-	 *     can.Control = can.Construct.extend({
-	 *         setup: function(domElement, rawOptions) {
-	 *             // set up this.element
-	 *             this.element = $(domElement);
-	 *
-	 *             // set up this.options
-	 *             this.options = can.extend({},
-	 *                                   this.constructor.defaults,
-	 *                                   rawOptions
-	 *                                  );
-	 *
-	 *             // pass this.element and this.options to init.
-	 *             return [this.element, this.options];
-	 *         }
-	 *     });
-	 *
-	 */
-	can.Construct.prototype.setup = function () {};
-	/**
-	 * @function can.Construct.prototype.init init
-	 * @parent can.Construct.prototype
-	 *
-	 * @description Called when a new instance of a can.Construct is created.
-	 *
-	 * @signature `construct.init(...args)`
-	 * @param {*} args the arguments passed to the constructor (or the items of the array returned from [can.Construct::setup])
-	 *
-	 * @body
-	 * If a prototype `init` method is provided, it is called when a new Construct is created,
-	 * after [can.Construct::setup]. The `init` method is where the bulk of your initialization code
-	 * should go, and a common thing to do in `init` is to save the arguments passed into the constructor.
-	 *
-	 * ## Examples
-	 *
-	 * First, we'll make a Person constructor that has a first and last name:
-	 *
-	 * @codestart
-	 * var Person = can.Construct.extend({
-	 *     init: function(first, last) {
-	 *         this.first = first;
-	 *         this.last  = last;
-	 *     }
-	 * });
-	 *
-	 * var justin = new Person("Justin", "Meyer");
-	 * justin.first; // "Justin"
-	 * justin.last; // "Meyer"
-	 * @codeend
-	 *
-	 * Then we'll extend Person into Programmer and add a favorite language:
-	 *
-	 * @codestart
-	 * var Programmer = Person.extend({
-	 *     init: function(first, last, language) {
-	 *         // call base's init
-	 *         Person.prototype.init.apply(this, arguments);
-	 *
-	 *         // other initialization code
-	 *         this.language = language;
-	 *     },
-	 *     bio: function() {
-	 *         return "Hi! I'm "" + this.first + " " + this.last +
-	 *             " and I write " + this.language + ".";
-	 *     }
-	 * });
-	 *
-	 * var brian = new Programmer("Brian", "Moschel", 'ECMAScript');
-	 * brian.bio(); // "Hi! I'm Brian Moschel and I write ECMAScript.";
-	 * @codeend
-	 *
-	 * ## Modified Arguments
-	 *
-	 * [can.Construct::setup] is able to modify the arguments passed to `init`.
-	 * If you aren't receiving the exact arguments as those passed to `new Construct(args)`,
-	 * check to make sure that they aren't being changed by `setup` somewhere along
-	 * the inheritance chain.
-	 */
-	can.Construct.prototype.init = function () {};
-	return can.Construct;
-});
 /*
 Author: Geraint Luff and others
 Year: 2013
@@ -5675,6 +3880,1243 @@ fn);
  * Includes: CanJS default build
  * Download from: http://canjs.us/
  */
+define('can/util/can',[],function () {
+	/* global GLOBALCAN */
+	var can = window.can || {};
+	if (typeof GLOBALCAN === 'undefined' || GLOBALCAN !== false) {
+		window.can = can;
+	}
+
+	// An empty function useful for where you need a dummy callback.
+	can.k = function(){};
+
+	can.isDeferred = function (obj) {
+		var isFunction = this.isFunction;
+		// Returns `true` if something looks like a deferred.
+		return obj && isFunction(obj.then) && isFunction(obj.pipe);
+	};
+
+	var cid = 0;
+	can.cid = function (object, name) {
+		if (!object._cid) {
+			cid++;
+			object._cid = (name || '') + cid;
+		}
+		return object._cid;
+	};
+	can.VERSION = '2.1.0';
+
+	can.simpleExtend = function (d, s) {
+		for (var prop in s) {
+			d[prop] = s[prop];
+		}
+		return d;
+	};
+
+
+	can.frag = function(item){
+		var frag;
+		if(!item || typeof item === "string"){
+			frag = can.buildFragment(item == null ? "" : ""+item, document.body);
+			// If we have an empty frag...
+			if (!frag.childNodes.length) {
+				frag.appendChild(document.createTextNode(''));
+			}
+			return frag;
+		} else if(item.nodeType === 11) {
+			return item;
+		} else if(typeof item.nodeType === "number") {
+			frag = document.createDocumentFragment();
+			frag.appendChild(item);
+			return frag;
+		} else if(typeof item.length === "number") {
+			frag = document.createDocumentFragment();
+			can.each(item, function(item){
+				frag.appendChild( can.frag(item) );
+			});
+			return frag;
+		} else {
+			frag = can.buildFragment( ""+item, document.body);
+			// If we have an empty frag...
+			if (!frag.childNodes.length) {
+				frag.appendChild(document.createTextNode(''));
+			}
+			return frag;
+		}
+	};
+	
+	// this is here in case can.compute hasn't loaded
+	can.__reading = function () {};
+
+
+
+	return can;
+});
+/*!
+ * CanJS - 2.1.0
+ * http://canjs.us/
+ * Copyright (c) 2014 Bitovi
+ * Mon, 05 May 2014 22:15:43 GMT
+ * Licensed MIT
+ * Includes: CanJS default build
+ * Download from: http://canjs.us/
+ */
+define('can/util/attr',["can/util/can"], function (can) {
+
+	// Acts as a polyfill for setImmediate which only works in IE 10+. Needed to make
+	// the triggering of `attributes` event async.
+	var setImmediate = window.setImmediate || function (cb) {
+			return setTimeout(cb, 0);
+		},
+		attr = {
+			// This property lets us know if the browser supports mutation observers.
+			// If they are supported then that will be setup in can/util/jquery and those native events will be used to inform observers of attribute changes.
+			// Otherwise this module handles triggering an `attributes` event on the element.
+			MutationObserver: window.MutationObserver || window.WebKitMutationObserver || window.MozMutationObserver,
+
+			/**
+			 * @property {Object.<String,(String|Boolean|function)>} can.view.attr.map
+			 * @parent can.view.elements
+			 * @hide
+			 *
+			 *
+			 * A mapping of
+			 * special attributes to their JS property. For example:
+			 *
+			 *     "class" : "className"
+			 *
+			 * means get or set `element.className`. And:
+			 *
+			 *      "checked" : true
+			 *
+			 * means set `element.checked = true`.
+			 *
+			 *
+			 * If the attribute name is not found, it's assumed to use
+			 * `element.getAttribute` and `element.setAttribute`.
+			 */
+			map: {
+				"class": "className",
+				"value": "value",
+				"innerText": "innerText",
+				"textContent": "textContent",
+				"checked": true,
+				"disabled": true,
+				"readonly": true,
+				"required": true,
+				// For the `src` attribute we are using a setter function to prevent values such as an empty string or null from being set.
+				// An `img` tag attempts to fetch the `src` when it is set, so we need to prevent that from happening by removing the attribute instead.
+				src: function (el, val) {
+					if (val == null || val === "") {
+						el.removeAttribute("src");
+						return null;
+					} else {
+						el.setAttribute("src", val);
+						return val;
+					}
+				},
+				style: function (el, val) {
+					return el.style.cssText = val || "";
+				}
+			},
+			// These are elements whos default value we should set.
+			defaultValue: ["input", "textarea"],
+			// ## attr.set
+			// Set the value an attribute on an element.
+			set: function (el, attrName, val) {
+				var oldValue;
+				// In order to later trigger an event we need to compare the new value to the old value, so here we go ahead and retrieve the old value for browsers that don't have native MutationObservers.
+				if (!attr.MutationObserver) {
+					oldValue = attr.get(el, attrName);
+				}
+
+				var tagName = el.nodeName.toString()
+					.toLowerCase(),
+					prop = attr.map[attrName],
+					newValue;
+				
+				// Using the property of `attr.map`, go through and check if the property is a function, and if so call it. Then check if the property is `true`, and if so set the value to `true`, also making sure to set `defaultChecked` to `true` for elements of `attr.defaultValue`. We always set the value to true because for these boolean properties, setting them to false would be the same as removing the attribute.
+				//
+				// For all other attributes use `setAttribute` to set the new value.
+				if (typeof prop === "function") {
+					newValue = prop(el, val);
+				} else if (prop === true) {
+					newValue = el[attrName] = true;
+
+					if (attrName === "checked" && el.type === "radio") {
+						if (can.inArray(tagName, attr.defaultValue) >= 0) {
+							el.defaultChecked = true;
+						}
+					}
+
+				} else if (prop) {
+					newValue = el[prop] = val;
+					if (prop === "value" && can.inArray(tagName, attr.defaultValue) >= 0) {
+						el.defaultValue = val;
+					}
+				} else {
+					el.setAttribute(attrName, val);
+					newValue = val;
+				}
+
+				// Now that the value has been set, for browsers without MutationObservers, check to see that value has changed and if so trigger the "attributes" event on the element.
+				if (!attr.MutationObserver && newValue !== oldValue) {
+					attr.trigger(el, attrName, oldValue);
+				}
+			},
+			// ## attr.trigger
+			// Used to trigger an "attributes" event on an element. Checks to make sure that someone is listening for the event and then queues a function to be called asynchronously using `setImmediate.
+			trigger: function (el, attrName, oldValue) {
+				if (can.data(can.$(el), "canHasAttributesBindings")) {
+					return setImmediate(function () {
+						can.trigger(el, {
+							type: "attributes",
+							attributeName: attrName,
+							target: el,
+							oldValue: oldValue,
+							bubbles: false
+						}, []);
+					});
+				}
+			},
+			// ## attr.get
+			// Gets the value of an attribute. First checks to see if the property is a string on `attr.map` and if so returns the value from the element's property. Otherwise uses `getAttribute` to retrieve the value.
+			get: function (el, attrName) {
+				var prop = attr.map[attrName];
+				if(typeof prop === "string" && el[prop]) {
+					return el[prop];
+				}
+				
+				return el.getAttribute(attrName);
+			},
+			// ## attr.remove
+			// Removes an attribute from an element. Works by using the `attr.map` to see if the attribute is a special type of property. If the property is a function then the fuction is called with `undefined` as the value. If the property is `true` then the attribute is set to false. If the property is a string then the attribute is set to an empty string. Otherwise `removeAttribute` is used.
+			//
+			// If the attribute previously had a value and the browser doesn't support MutationObservers we then trigger an "attributes" event.
+			remove: function (el, attrName) {
+				var oldValue;
+				if (!attr.MutationObserver) {
+					oldValue = attr.get(el, attrName);
+				}
+
+				var setter = attr.map[attrName];
+				if (typeof setter === "function") {
+					setter(el, undefined);
+				}
+				if (setter === true) {
+					el[attrName] = false;
+				} else if (typeof setter === "string") {
+					el[setter] = "";
+				} else {
+					el.removeAttribute(attrName);
+				}
+				if (!attr.MutationObserver && oldValue != null) {
+					attr.trigger(el, attrName, oldValue);
+				}
+
+			},
+			// ## attr.has
+			// Checks if an element contains an attribute.
+			// For browsers that support `hasAttribute`, creates a function that calls hasAttribute, otherwise creates a function that uses `getAttribute` to check that the attribute is not null.
+			has: (function () {
+				var el = document.createElement('div');
+				if (el.hasAttribute) {
+					return function (el, name) {
+						return el.hasAttribute(name);
+					};
+				} else {
+					return function (el, name) {
+						return el.getAttribute(name) !== null;
+					};
+				}
+			})()
+		};
+
+	return attr;
+
+});
+/*!
+ * CanJS - 2.1.0
+ * http://canjs.us/
+ * Copyright (c) 2014 Bitovi
+ * Mon, 05 May 2014 22:15:43 GMT
+ * Licensed MIT
+ * Includes: CanJS default build
+ * Download from: http://canjs.us/
+ */
+define('can/event',["can/util/can"], function (can) {
+	// ## can.event.addEvent
+	//
+	// Adds a basic event listener to an object.
+	// This consists of storing a cache of event listeners on each object,
+	// that are iterated through later when events are dispatched.
+	/**
+	 * @function can.event.addEvent
+	 * @parent can.event.static
+	 * @signature `obj.addEvent( event, handler )`
+	 *
+	 * Add a basic event listener to an object.
+	 *
+	 * @param {String} event The name of the event to listen for.
+	 * @param {Function} handler The handler that will be executed to handle the event.
+	 * @return {Object} this
+	 *
+	 * @signature `can.event.addEvent.call( obj, event, handler )`
+	 *
+	 * This syntax can be used for objects that don't include the `can.event` mixin.
+	 */
+	can.addEvent = function (event, handler) {
+		// Initialize event cache.
+		var allEvents = this.__bindEvents || (this.__bindEvents = {}),
+			eventList = allEvents[event] || (allEvents[event] = []);
+
+		// Add the event
+		eventList.push({
+			handler: handler,
+			name: event
+		});
+		return this;
+	};
+
+	// ## can.event.listenTo
+	//
+	// Listens to an event without know how bind is implemented.
+	// The primary use for this is to listen to another's objects event while 
+	// tracking events on the local object (similar to namespacing).
+	//
+	// The API was heavily influenced by BackboneJS: http://backbonejs.org/
+	/**
+	 * @function can.event.listenTo
+	 * @parent can.event.static
+	 * @signature `obj.listenTo( other, event, handler )`
+	 *
+	 * Listens for an event on another object.
+	 * This is similar to concepts like event namespacing, except that the namespace 
+	 * is the scope of the calling object.
+	 *
+	 * @param {Object} other The object to listen for events on.
+	 * @param {String} event The name of the event to listen for.
+	 * @param {Function} handler The handler that will be executed to handle the event.
+	 * @return {Object} this
+	 *
+	 * @signature `can.event.listenTo.call( obj, other, event, handler )`
+	 *
+	 * This syntax can be used for objects that don't include the `can.event` mixin.
+	 */
+	can.listenTo = function (other, event, handler) {
+		// Initialize event cache
+		var idedEvents = this.__listenToEvents;
+		if (!idedEvents) {
+			idedEvents = this.__listenToEvents = {};
+		}
+
+		// Identify the other object
+		var otherId = can.cid(other);
+		var othersEvents = idedEvents[otherId];
+		
+		// Create a local event cache
+		if (!othersEvents) {
+			othersEvents = idedEvents[otherId] = {
+				obj: other,
+				events: {}
+			};
+		}
+		var eventsEvents = othersEvents.events[event];
+		if (!eventsEvents) {
+			eventsEvents = othersEvents.events[event] = [];
+		}
+
+		// Add the event, both locally and to the other object
+		eventsEvents.push(handler);
+		can.bind.call(other, event, handler);
+	};
+
+	// ## can.event.stopListening
+	// 
+	// Stops listening for events on other objects
+	/**
+	 * @function can.event.stopListening
+	 * @parent can.event.static
+	 * @signature `obj.stopListening( other, event, handler )`
+	 *
+	 * Stops listening for an event on another object.
+	 *
+	 * @param {Object} other The object to listen for events on.
+	 * @param {String} event The name of the event to listen for.
+	 * @param {Function} handler The handler that will be executed to handle the event.
+	 * @return {Object} this
+	 *
+	 * @signature `can.event.stopListening.call( obj, other, event, handler )`
+	 *
+	 * This syntax can be used for objects that don't include the `can.event` mixin.
+	 */
+	can.stopListening = function (other, event, handler) {
+		var idedEvents = this.__listenToEvents,
+			iterIdedEvents = idedEvents,
+			i = 0;
+		if (!idedEvents) {
+			return this;
+		}
+		if (other) {
+			var othercid = can.cid(other);
+			(iterIdedEvents = {})[othercid] = idedEvents[othercid];
+			// you might be trying to listen to something that is not there
+			if (!idedEvents[othercid]) {
+				return this;
+			}
+		}
+
+		// Clean up events on the other object
+		for (var cid in iterIdedEvents) {
+			var othersEvents = iterIdedEvents[cid],
+				eventsEvents;
+			other = idedEvents[cid].obj;
+
+			// Find the cache of events
+			if (!event) {
+				eventsEvents = othersEvents.events;
+			} else {
+				(eventsEvents = {})[event] = othersEvents.events[event];
+			}
+
+			// Unbind event handlers, both locally and on the other object
+			for (var eventName in eventsEvents) {
+				var handlers = eventsEvents[eventName] || [];
+				i = 0;
+				while (i < handlers.length) {
+					if (handler && handler === handlers[i] || !handler) {
+						can.unbind.call(other, eventName, handlers[i]);
+						handlers.splice(i, 1);
+					} else {
+						i++;
+					}
+				}
+				// no more handlers?
+				if (!handlers.length) {
+					delete othersEvents.events[eventName];
+				}
+			}
+			if (can.isEmptyObject(othersEvents.events)) {
+				delete idedEvents[cid];
+			}
+		}
+		return this;
+	};
+
+	// ## can.event.removeEvent
+	//
+	// Removes a basic event listener from an object.
+	// This removes event handlers from the cache of listened events.
+	/**
+	 * @function can.event.removeEvent
+	 * @parent can.event.static
+	 * @signature `obj.removeEvent( event, handler )`
+	 *
+	 * Removes a basic event listener from an object.
+	 *
+	 * @param {String} event The name of the event to listen for.
+	 * @param {Function} handler The handler that will be executed to handle the event.
+	 * @param {Function} [__validate] An extra function that can validate an event handler 
+	 *                                as a match. This is an internal parameter and only used 
+	 *                                for `can/event` plugins.
+	 * @return {Object} this
+	 *
+	 * @signature `can.event.removeEvent.call( obj, event, handler )`
+	 *
+	 * This syntax can be used for objects that don't include the `can.event` mixin.
+	 */
+	can.removeEvent = function (event, fn, __validate) {
+		if (!this.__bindEvents) {
+			return this;
+		}
+		var events = this.__bindEvents[event] || [],
+			i = 0,
+			ev, isFunction = typeof fn === 'function';
+		while (i < events.length) {
+			ev = events[i];
+			// Determine whether this event handler is "equivalent" to the one requested
+			// Generally this requires the same event/function, but a validation function 
+			// can be included for extra conditions. This is used in some plugins like `can/event/namespace`.
+			if (__validate ? __validate(ev, event, fn) : isFunction && ev.handler === fn || !isFunction && (ev.cid === fn || !fn)) {
+				events.splice(i, 1);
+			} else {
+				i++;
+			}
+		}
+		return this;
+	};
+
+	// ## can.event.dispatch
+	//
+	// Dispatches/triggers a basic event on an object.
+	/**
+	 * @function can.event.dispatch
+	 * @parent can.event.static
+	 * @signature `obj.dispatch( event, args )`
+	 *
+	 * Dispatches/triggers a basic event on an object.
+	 *
+	 * @param {String|Object} event The event to dispatch
+	 * @param {Array} [args] Additional arguments to pass to event handlers
+	 * @return {Object} event The resulting event object
+	 *
+	 * @signature `can.event.dispatch.call( obj, event, args )`
+	 *
+	 * This syntax can be used for objects that don't include the `can.event` mixin.
+	 */
+	can.dispatch = function (event, args) {
+		var events = this.__bindEvents;
+		if (!events) {
+			return;
+		}
+
+		// Initialize the event object
+		if (typeof event === 'string') {
+			event = {
+				type: event
+			};
+		}
+
+		// Grab event listeners
+		var eventName = event.type,
+			handlers = (events[eventName] || []).slice(0);
+		
+		// Execute handlers listening for this event.
+		args = [event].concat(args || []);
+		for (var i = 0, len = handlers.length; i < len; i++) {
+			handlers[i].handler.apply(this, args);
+		}
+
+		return event;
+	};
+	
+	// ## can.event.one
+	//
+	// Adds a basic event listener that listens to an event once and only once.
+	/**
+	 * @function can.event.one
+	 * @parent can.event.static
+	 * @signature `obj.one( event, handler )`
+	 *
+	 * Adds a basic event listener that listens to an event once and only once.
+	 *
+	 * @param {String} event The name of the event to listen for.
+	 * @param {Function} handler The handler that will be executed to handle the event.
+	 * @return {Object} this
+	 */
+	can.one = function(event, handler) {
+		// Unbind the listener after it has been executed
+		var one = function() {
+			can.unbind.call(this, event, one);
+			return handler.apply(this, arguments);
+		};
+
+		// Bind the altered listener
+		can.bind.call(this, event, one);
+		return this;
+	};
+
+	// ## can.event
+	// Create and export the `can.event` mixin
+	can.event = {
+		// Event method aliases
+		/**
+		 * @function can.event.on
+		 * @parent can.event.static
+		 * @signature `obj.on( event, handler )`
+		 *
+		 * Add a basic event listener to an object.
+		 *
+		 * This is an alias of [can.event.addEvent addEvent].
+		 *
+		 * @signature `can.event.on.call( obj, event, handler )`
+		 *
+		 * This syntax can be used for objects that don't include the `can.event` mixin.
+		 */
+		on: can.addEvent,
+		/**
+		 * @function can.event.off
+		 * @parent can.event.static
+		 * @signature `obj.off( event, handler )`
+		 *
+		 * Removes a basic event listener from an object.
+		 *
+		 * This is an alias of [can.event.removeEvent removeEvent].
+		 *
+		 * @signature `can.event.off.call( obj, event, handler )`
+		 *
+		 * This syntax can be used for objects that don't include the `can.event` mixin.
+		 */
+		off: can.removeEvent,
+		/**
+		 * @function can.event.bind
+		 * @parent can.event.static
+		 * @signature `obj.bind( event, handler )`
+		 *
+		 * Add a basic event listener to an object.
+		 *
+		 * This is an alias of [can.event.addEvent addEvent].
+		 *
+		 * @signature `can.event.bind.call( obj, event, handler )`
+		 *
+		 * This syntax can be used for objects that don't include the `can.event` mixin.
+		 */
+		bind: can.addEvent,
+		/**
+		 * @function can.event.unbind
+		 * @parent can.event.static
+		 * @signature `obj.unbind( event, handler )`
+		 *
+		 * Removes a basic event listener from an object.
+		 *
+		 * This is an alias of [can.event.removeEvent removeEvent].
+		 *
+		 * @signature `can.event.unbind.call( obj, event, handler )`
+		 *
+		 * This syntax can be used for objects that don't include the `can.event` mixin.
+		 */
+		unbind: can.removeEvent,
+		/**
+		 * @function can.event.delegate
+		 * @parent can.event.static
+		 * @signature `obj.delegate( selector, event, handler )`
+		 *
+		 * Provides a compatibility layer for adding delegate event listeners.
+		 * This doesn't actually implement delegates, but rather allows 
+		 * logic that assumes a delegate to still function.
+		 *
+		 * Therefore, this is essentially an alias of [can.event.addEvent addEvent] with the selector ignored.
+		 *
+		 * @param {String} selector The **ignored** selector to use for the delegate.
+		 * @param {String} event The name of the event to listen for.
+		 * @param {Function} handler The handler that will be executed to handle the event.
+		 * @return {Object} this
+		 *
+		 * @signature `can.event.delegate.call( obj, selector, event, handler )`
+		 *
+		 * This syntax can be used for objects that don't include the `can.event` mixin.
+		 */
+		delegate: function(selector, event, handler) {
+			return can.addEvent.call(event, handler);
+		},
+		/**
+		 * @function can.event.undelegate
+		 * @parent can.event.static
+		 * @signature `obj.undelegate( selector, event, handler )`
+		 *
+		 * Provides a compatibility layer for removing delegate event listeners.
+		 * This doesn't actually implement delegates, but rather allows 
+		 * logic that assumes a delegate to still function.
+		 *
+		 * Therefore, this is essentially an alias of [can.event.removeEvent removeEvent] with the selector ignored.
+		 *
+		 * @param {String} selector The **ignored** selector to use for the delegate.
+		 * @param {String} event The name of the event to listen for.
+		 * @param {Function} handler The handler that will be executed to handle the event.
+		 * @return {Object} this
+		 *
+		 * @signature `can.event.undelegate.call( obj, selector, event, handler )`
+		 *
+		 * This syntax can be used for objects that don't include the `can.event` mixin.
+		 */
+		undelegate: function(selector, event, handler) {
+			return can.removeEvent.call(event, handler);
+		},
+		/**
+		 * @function can.event.trigger
+		 * @parent can.event.static
+		 * @signature `obj.trigger( event, args )`
+		 *
+		 * Dispatches/triggers a basic event on an object.
+		 * This is an alias of [can.event.dispatch dispatch].
+		 *
+		 * @signature `can.event.trigger.call( obj, event, args )`
+		 *
+		 * This syntax can be used for objects that don't include the `can.event` mixin.
+		 */
+		trigger: can.dispatch,
+
+		// Normal can/event methods
+		one: can.one,
+		addEvent: can.addEvent,
+		removeEvent: can.removeEvent,
+		listenTo: can.listenTo,
+		stopListening: can.stopListening,
+		dispatch: can.dispatch
+	};
+
+	return can.event;
+});
+/*!
+ * CanJS - 2.1.0
+ * http://canjs.us/
+ * Copyright (c) 2014 Bitovi
+ * Mon, 05 May 2014 22:15:43 GMT
+ * Licensed MIT
+ * Includes: CanJS default build
+ * Download from: http://canjs.us/
+ */
+define('can/util/array/each',["can/util/can"], function (can) {
+	
+	// The following is from jQuery
+	var isArrayLike = function(obj){
+		var length = obj.length;
+		return typeof arr !== "function" &&
+			( length === 0 || typeof length === "number" && length > 0 && ( length - 1 ) in obj );
+	};
+	
+	can.each = function (elements, callback, context) {
+		var i = 0,
+			key,
+			len,
+			item;
+		if (elements) {
+			if ( isArrayLike(elements) ) {
+				if(can.List && elements instanceof can.List ) {
+					for (len = elements.attr("length"); i < len; i++) {
+						item = elements.attr(i);
+						if (callback.call(context || item, item, i, elements) === false) {
+							break;
+						}
+					}
+				} else {
+					for (len = elements.length; i < len; i++) {
+						item = elements[i];
+						if (callback.call(context || item, item, i, elements) === false) {
+							break;
+						}
+					}
+				}
+				
+			} else if (typeof elements === "object") {
+				
+				if (can.Map && elements instanceof can.Map || elements === can.route) {
+					var keys = can.Map.keys(elements);
+					for(i =0, len = keys.length; i < len; i++) {
+						key = keys[i];
+						item = elements.attr(key);
+						if (callback.call(context || item, item, key, elements) === false) {
+							break;
+						}
+					}
+				} else {
+					for (key in elements) {
+						if (elements.hasOwnProperty(key) && callback.call(context || elements[key], elements[key], key, elements) === false) {
+							break;
+						}
+					}
+				}
+				
+			}
+		}
+		return elements;
+	};
+	return can;
+});
+/*!
+ * CanJS - 2.1.0
+ * http://canjs.us/
+ * Copyright (c) 2014 Bitovi
+ * Mon, 05 May 2014 22:15:43 GMT
+ * Licensed MIT
+ * Includes: CanJS default build
+ * Download from: http://canjs.us/
+ */
+define('can/util/inserted',["can/util/can"], function (can) {
+	can.inserted = function (elems) {
+		// Turn the `elems` property into an array to prevent mutations from changing the looping.
+		elems = can.makeArray(elems);
+		var inDocument = false,
+			// Gets the `doc` to use as a reference for finding out whether the element is in the document.
+			doc = can.$(document.contains ? document : document.body),
+			children;
+		// Go through `elems` and trigger the `inserted` event.
+		// If the first element is not in the document (a Document Fragment) it will exit the function. If it is in the document it sets the `inDocument` flag to true. This means that we only check for the first element and either exit the function or start triggering "inserted" for child elements.
+		for (var i = 0, elem;
+			(elem = elems[i]) !== undefined; i++) {
+			if (!inDocument) {
+				if (elem.getElementsByTagName) {
+					if (can.has(doc, elem)
+						.length) {
+						inDocument = true;
+					} else {
+						return;
+					}
+				} else {
+					continue;
+				}
+			}
+
+			// If we've found an element in the document then we can now trigger **"inserted"** for `elem` and all of its children. We are using `getElementsByTagName("*")` so that we grab all of the descendant nodes.
+			if (inDocument && elem.getElementsByTagName) {
+				children = can.makeArray(elem.getElementsByTagName("*"));
+				can.trigger(elem, "inserted", [], false);
+				for (var j = 0, child;
+					(child = children[j]) !== undefined; j++) {
+					can.trigger(child, "inserted", [], false);
+				}
+			}
+		}
+	};
+
+	// ## can.appendChild
+	// Used to append a node to an element and trigger the "inserted" event on all of the newly inserted children. Since `can.inserted` takes an array we convert the child to an array, or in the case of a DocumentFragment we first convert the childNodes to an array and call inserted on those.
+	can.appendChild = function (el, child) {
+		var children;
+		if (child.nodeType === 11) {
+			children = can.makeArray(child.childNodes);
+		} else {
+			children = [child];
+		}
+		el.appendChild(child);
+		can.inserted(children);
+	};
+
+	// ## can.insertBefore
+	// Like can.appendChild, used to insert a node to an element before a reference node and then trigger the "inserted" event.
+	can.insertBefore = function (el, child, ref) {
+		var children;
+		if (child.nodeType === 11) {
+			children = can.makeArray(child.childNodes);
+		} else {
+			children = [child];
+		}
+		el.insertBefore(child, ref);
+		can.inserted(children);
+	};
+});
+/*!
+ * CanJS - 2.1.0
+ * http://canjs.us/
+ * Copyright (c) 2014 Bitovi
+ * Mon, 05 May 2014 22:15:43 GMT
+ * Licensed MIT
+ * Includes: CanJS default build
+ * Download from: http://canjs.us/
+ */
+define('can/util/jquery',["jquery", "can/util/can", "can/util/attr", "can/event", "can/util/array/each", "can/util/inserted"], function ($, can, attr, event) {
+	var isBindableElement = function (node) {
+		// In IE8 window.window !== window.window, so we allow == here.
+		/*jshint eqeqeq:false*/
+		return ( node.nodeName && (node.nodeType === 1 || node.nodeType === 9) )|| node == window;
+	};
+	// _jQuery node list._
+	$.extend(can, $, {
+		trigger: function (obj, event, args, bubbles) {
+			if (isBindableElement( obj ) ) {
+				$.event.trigger(event, args, obj, !bubbles);
+			} else if (obj.trigger) {
+				obj.trigger(event, args);
+			} else {
+				if (typeof event === 'string') {
+					event = {
+						type: event
+					};
+				}
+				event.target = event.target || obj;
+				can.dispatch.call(obj, event, args);
+			}
+		},
+		event: can.event,
+		addEvent: can.addEvent,
+		removeEvent: can.removeEvent,
+		buildFragment: function (elems, context) {
+			// Check if this has any html nodes on our own.
+			var ret;
+			elems = [elems];
+			// Set context per 1.8 logic
+			context = context || document;
+			context = !context.nodeType && context[0] || context;
+			context = context.ownerDocument || context;
+			ret = $.buildFragment(elems, context);
+			return ret.cacheable ? $.clone(ret.fragment) : ret.fragment || ret;
+		},
+		$: $,
+		each: can.each,
+		bind: function (ev, cb) {
+			// If we can bind to it...
+			if (this.bind && this.bind !== can.bind) {
+				this.bind(ev, cb);
+			} else if (isBindableElement(this)) {
+				$.event.add(this, ev, cb);
+			} else {
+				// Make it bind-able...
+				can.addEvent.call(this, ev, cb);
+			}
+			return this;
+		},
+		unbind: function (ev, cb) {
+			// If we can bind to it...
+			if (this.unbind && this.unbind !== can.unbind) {
+				this.unbind(ev, cb);
+			} else if (isBindableElement(this)) {
+				$.event.remove(this, ev, cb);
+			} else {
+				// Make it bind-able...
+				can.removeEvent.call(this, ev, cb);
+			}
+			return this;
+		},
+		delegate: function (selector, ev, cb) {
+			if (this.delegate) {
+				this.delegate(selector, ev, cb);
+			} else if (isBindableElement(this)) {
+				$(this)
+					.delegate(selector, ev, cb);
+			} else {
+				// make it bind-able ...
+				can.bind.call(this, ev, cb);
+			}
+			return this;
+		},
+		undelegate: function (selector, ev, cb) {
+			if (this.undelegate) {
+				this.undelegate(selector, ev, cb);
+			} else if (isBindableElement(this)) {
+				$(this)
+					.undelegate(selector, ev, cb);
+			} else {
+				can.unbind.call(this, ev, cb);
+			}
+			return this;
+		},
+		proxy: function (fn, context) {
+			return function () {
+				return fn.apply(context, arguments);
+			};
+		},
+		attr: attr
+	});
+	// Wrap binding functions.
+	/*$.each(['bind','unbind','undelegate','delegate'],function(i,func){
+		can[func] = function(){
+			var t = this[func] ? this : $([this]);
+			t[func].apply(t, arguments);
+			return this;
+		};
+	});*/
+	// Aliases
+	can.on = can.bind;
+	can.off = can.unbind;
+	// Wrap modifier functions.
+	$.each([
+		'append',
+		'filter',
+		'addClass',
+		'remove',
+		'data',
+		'get',
+		'has'
+	], function (i, name) {
+		can[name] = function (wrapped) {
+			return wrapped[name].apply(wrapped, can.makeArray(arguments)
+				.slice(1));
+		};
+	});
+	// Memory safe destruction.
+	var oldClean = $.cleanData;
+	$.cleanData = function (elems) {
+		$.each(elems, function (i, elem) {
+			if (elem) {
+				can.trigger(elem, 'removed', [], false);
+			}
+		});
+		oldClean(elems);
+	};
+	var oldDomManip = $.fn.domManip,
+		cbIndex;
+	// feature detect which domManip we are using
+	$.fn.domManip = function (args, cb1, cb2) {
+		for (var i = 1; i < arguments.length; i++) {
+			if (typeof arguments[i] === 'function') {
+				cbIndex = i;
+				break;
+			}
+		}
+		return oldDomManip.apply(this, arguments);
+	};
+	$(document.createElement("div"))
+		.append(document.createElement("div"));
+
+	$.fn.domManip = (cbIndex === 2 ?
+		function (args, table, callback) {
+			return oldDomManip.call(this, args, table, function (elem) {
+				var elems;
+				if (elem.nodeType === 11) {
+					elems = can.makeArray(elem.childNodes);
+				}
+				var ret = callback.apply(this, arguments);
+				can.inserted(elems ? elems : [elem]);
+				return ret;
+			});
+		} :
+		function (args, callback) {
+			return oldDomManip.call(this, args, function (elem) {
+				var elems;
+				if (elem.nodeType === 11) {
+					elems = can.makeArray(elem.childNodes);
+				}
+				var ret = callback.apply(this, arguments);
+				can.inserted(elems ? elems : [elem]);
+				return ret;
+			});
+		});
+
+	if (!can.attr.MutationObserver) {
+		// handle via calls to attr
+		var oldAttr = $.attr;
+		$.attr = function (el, attrName) {
+			var oldValue, newValue;
+			if (arguments.length >= 3) {
+				oldValue = oldAttr.call(this, el, attrName);
+			}
+			var res = oldAttr.apply(this, arguments);
+			if (arguments.length >= 3) {
+				newValue = oldAttr.call(this, el, attrName);
+			}
+			if (newValue !== oldValue) {
+				can.attr.trigger(el, attrName, oldValue);
+			}
+			return res;
+		};
+		var oldRemove = $.removeAttr;
+		$.removeAttr = function (el, attrName) {
+			var oldValue = oldAttr.call(this, el, attrName),
+				res = oldRemove.apply(this, arguments);
+
+			if (oldValue != null) {
+				can.attr.trigger(el, attrName, oldValue);
+			}
+			return res;
+		};
+		$.event.special.attributes = {
+			setup: function () {
+				can.data(can.$(this), "canHasAttributesBindings", true);
+			},
+			teardown: function () {
+				$.removeData(this, "canHasAttributesBindings");
+			}
+		};
+	} else {
+		// setup a special events
+		$.event.special.attributes = {
+			setup: function () {
+				var self = this;
+				var observer = new can.attr.MutationObserver(function (mutations) {
+					mutations.forEach(function (mutation) {
+						var copy = can.simpleExtend({}, mutation);
+						can.trigger(self, copy, []);
+					});
+
+				});
+				observer.observe(this, {
+					attributes: true,
+					attributeOldValue: true
+				});
+				can.data(can.$(this), "canAttributesObserver", observer);
+			},
+			teardown: function () {
+				can.data(can.$(this), "canAttributesObserver")
+					.disconnect();
+				$.removeData(this, "canAttributesObserver");
+
+			}
+		};
+	}
+	
+	// ## Fix build fragment.
+	// In IE8, we can pass jQuery a fragment and it removes newlines.
+	// This checks for that and replaces can.buildFragment with something
+	// that if only a single text node is returned, returns a fragment with
+	// a text node that is set to the content.
+	(function(){
+		
+		var text = "<-\n>",
+			frag = can.buildFragment(text, document);
+		if(text !== frag.childNodes[0].nodeValue) {
+			
+			var oldBuildFragment  = can.buildFragment;
+			can.buildFragment = function(content, context){
+				var res = oldBuildFragment(content, context);
+				if(res.childNodes.length === 1 && res.childNodes[0].nodeType === 3) {
+					res.childNodes[0].nodeValue = content;
+				}
+				return res;
+			};
+			
+		}
+		
+		
+		
+	})();
+
+	$.event.special.inserted = {};
+	$.event.special.removed = {};
+	return can;
+});
+/*!
+ * CanJS - 2.1.0
+ * http://canjs.us/
+ * Copyright (c) 2014 Bitovi
+ * Mon, 05 May 2014 22:15:43 GMT
+ * Licensed MIT
+ * Includes: CanJS default build
+ * Download from: http://canjs.us/
+ */
+define('can/util/library',["can/util/jquery"], function (can) {
+	return can;
+});
+/*!
+ * CanJS - 2.1.0
+ * http://canjs.us/
+ * Copyright (c) 2014 Bitovi
+ * Mon, 05 May 2014 22:15:43 GMT
+ * Licensed MIT
+ * Includes: CanJS default build
+ * Download from: http://canjs.us/
+ */
+define('can/util/string',["can/util/library"], function (can) {
+	// ##string.js
+	// _Miscellaneous string utility functions._  
+	// Several of the methods in this plugin use code adapated from Prototype
+	// Prototype JavaScript framework, version 1.6.0.1.
+	// © 2005-2007 Sam Stephenson
+	var strUndHash = /_|-/,
+		strColons = /\=\=/,
+		strWords = /([A-Z]+)([A-Z][a-z])/g,
+		strLowUp = /([a-z\d])([A-Z])/g,
+		strDash = /([a-z\d])([A-Z])/g,
+		strReplacer = /\{([^\}]+)\}/g,
+		strQuote = /"/g,
+		strSingleQuote = /'/g,
+		strHyphenMatch = /-+(.)?/g,
+		strCamelMatch = /[a-z][A-Z]/g,
+		// Returns the `prop` property from `obj`.
+		// If `add` is true and `prop` doesn't exist in `obj`, create it as an
+		// empty object.
+		getNext = function (obj, prop, add) {
+			var result = obj[prop];
+			if (result === undefined && add === true) {
+				result = obj[prop] = {};
+			}
+			return result;
+		},
+		// Returns `true` if the object can have properties (no `null`s).
+		isContainer = function (current) {
+			return /^f|^o/.test(typeof current);
+		}, convertBadValues = function (content) {
+			// Convert bad values into empty strings
+			var isInvalid = content === null || content === undefined || isNaN(content) && '' + content === 'NaN';
+			return '' + (isInvalid ? '' : content);
+		};
+	can.extend(can, {
+		esc: function (content) {
+			return convertBadValues(content)
+				.replace(/&/g, '&amp;')
+				.replace(/</g, '&lt;')
+				.replace(/>/g, '&gt;')
+				.replace(strQuote, '&#34;')
+				.replace(strSingleQuote, '&#39;');
+		},
+		getObject: function (name, roots, add) {
+			// The parts of the name we are looking up
+			// `['App','Models','Recipe']`
+			var parts = name ? name.split('.') : [],
+				length = parts.length,
+				current, r = 0,
+				i, container, rootsLength;
+			// Make sure roots is an `array`.
+			roots = can.isArray(roots) ? roots : [roots || window];
+			rootsLength = roots.length;
+			if (!length) {
+				return roots[0];
+			}
+			// For each root, mark it as current.
+			for (r; r < rootsLength; r++) {
+				current = roots[r];
+				container = undefined;
+				// Walk current to the 2nd to last object or until there
+				// is not a container.
+				for (i = 0; i < length && isContainer(current); i++) {
+					container = current;
+					current = getNext(container, parts[i]);
+				}
+				// If we found property break cycle
+				if (container !== undefined && current !== undefined) {
+					break;
+				}
+			}
+			// Remove property from found container
+			if (add === false && current !== undefined) {
+				delete container[parts[i - 1]];
+			}
+			// When adding property add it to the first root
+			if (add === true && current === undefined) {
+				current = roots[0];
+				for (i = 0; i < length && isContainer(current); i++) {
+					current = getNext(current, parts[i], true);
+				}
+			}
+			return current;
+		},
+		capitalize: function (s, cache) {
+			// Used to make newId.
+			return s.charAt(0)
+				.toUpperCase() + s.slice(1);
+		},
+		camelize: function (str) {
+			return convertBadValues(str)
+				.replace(strHyphenMatch, function (match, chr) {
+					return chr ? chr.toUpperCase() : '';
+				});
+		},
+		hyphenate: function (str) {
+			return convertBadValues(str)
+				.replace(strCamelMatch, function (str, offset) {
+					return str.charAt(0) + '-' + str.charAt(1)
+						.toLowerCase();
+				});
+		},
+		underscore: function (s) {
+			return s.replace(strColons, '/')
+				.replace(strWords, '$1_$2')
+				.replace(strLowUp, '$1_$2')
+				.replace(strDash, '_')
+				.toLowerCase();
+		},
+		sub: function (str, data, remove) {
+			var obs = [];
+			str = str || '';
+			obs.push(str.replace(strReplacer, function (whole, inside) {
+				// Convert inside to type.
+				var ob = can.getObject(inside, data, remove === true ? false : undefined);
+				if (ob === undefined || ob === null) {
+					obs = null;
+					return '';
+				}
+				// If a container, push into objs (which will return objects found).
+				if (isContainer(ob) && obs) {
+					obs.push(ob);
+					return '';
+				}
+				return '' + ob;
+			}));
+			return obs === null ? obs : obs.length <= 1 ? obs[0] : obs;
+		},
+		replacer: strReplacer,
+		undHash: strUndHash
+	});
+	return can;
+});
+/*!
+ * CanJS - 2.1.0
+ * http://canjs.us/
+ * Copyright (c) 2014 Bitovi
+ * Mon, 05 May 2014 22:15:43 GMT
+ * Licensed MIT
+ * Includes: CanJS default build
+ * Download from: http://canjs.us/
+ */
 define('can/util/object',["can/util/library"], function (can) {
 	var isArray = can.isArray;
 	/**
@@ -6783,520 +6225,17 @@ define('lodash/collections/contains',['../internals/baseIndexOf', '../objects/fo
   return contains;
 });
 
-/**
- * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
- * Build: `lodash modularize modern exports="amd" -o ./modern/`
- * Copyright 2012-2013 The Dojo Foundation <http://dojofoundation.org/>
- * Based on Underscore.js 1.5.2 <http://underscorejs.org/LICENSE>
- * Copyright 2009-2013 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
- * Available under MIT license <http://lodash.com/license>
- */
-define('lodash/objects/defaults',['./keys', '../internals/objectTypes'], function(keys, objectTypes) {
-
-  /**
-   * Assigns own enumerable properties of source object(s) to the destination
-   * object for all destination properties that resolve to `undefined`. Once a
-   * property is set, additional defaults of the same property will be ignored.
-   *
-   * @static
-   * @memberOf _
-   * @type Function
-   * @category Objects
-   * @param {Object} object The destination object.
-   * @param {...Object} [source] The source objects.
-   * @param- {Object} [guard] Allows working with `_.reduce` without using its
-   *  `key` and `object` arguments as sources.
-   * @returns {Object} Returns the destination object.
-   * @example
-   *
-   * var object = { 'name': 'barney' };
-   * _.defaults(object, { 'name': 'fred', 'employer': 'slate' });
-   * // => { 'name': 'barney', 'employer': 'slate' }
-   */
-  var defaults = function(object, source, guard) {
-    var index, iterable = object, result = iterable;
-    if (!iterable) return result;
-    var args = arguments,
-        argsIndex = 0,
-        argsLength = typeof guard == 'number' ? 2 : args.length;
-    while (++argsIndex < argsLength) {
-      iterable = args[argsIndex];
-      if (iterable && objectTypes[typeof iterable]) {
-      var ownIndex = -1,
-          ownProps = objectTypes[typeof iterable] && keys(iterable),
-          length = ownProps ? ownProps.length : 0;
-
-      while (++ownIndex < length) {
-        index = ownProps[ownIndex];
-        if (typeof result[index] == 'undefined') result[index] = iterable[index];
-      }
-      }
-    }
-    return result
-  };
-
-  return defaults;
-});
-
-/**
- * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
- * Build: `lodash modularize modern exports="amd" -o ./modern/`
- * Copyright 2012-2013 The Dojo Foundation <http://dojofoundation.org/>
- * Based on Underscore.js 1.5.2 <http://underscorejs.org/LICENSE>
- * Copyright 2009-2013 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
- * Available under MIT license <http://lodash.com/license>
- */
-define('lodash/internals/htmlEscapes',[], function() {
-
-  /**
-   * Used to convert characters to HTML entities:
-   *
-   * Though the `>` character is escaped for symmetry, characters like `>` and `/`
-   * don't require escaping in HTML and have no special meaning unless they're part
-   * of a tag or an unquoted attribute value.
-   * http://mathiasbynens.be/notes/ambiguous-ampersands (under "semi-related fun fact")
-   */
-  var htmlEscapes = {
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;'
-  };
-
-  return htmlEscapes;
-});
-
-/**
- * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
- * Build: `lodash modularize modern exports="amd" -o ./modern/`
- * Copyright 2012-2013 The Dojo Foundation <http://dojofoundation.org/>
- * Based on Underscore.js 1.5.2 <http://underscorejs.org/LICENSE>
- * Copyright 2009-2013 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
- * Available under MIT license <http://lodash.com/license>
- */
-define('lodash/internals/escapeHtmlChar',['./htmlEscapes'], function(htmlEscapes) {
-
-  /**
-   * Used by `escape` to convert characters to HTML entities.
-   *
-   * @private
-   * @param {string} match The matched character to escape.
-   * @returns {string} Returns the escaped character.
-   */
-  function escapeHtmlChar(match) {
-    return htmlEscapes[match];
-  }
-
-  return escapeHtmlChar;
-});
-
-/**
- * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
- * Build: `lodash modularize modern exports="amd" -o ./modern/`
- * Copyright 2012-2013 The Dojo Foundation <http://dojofoundation.org/>
- * Based on Underscore.js 1.5.2 <http://underscorejs.org/LICENSE>
- * Copyright 2009-2013 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
- * Available under MIT license <http://lodash.com/license>
- */
-define('lodash/internals/reUnescapedHtml',['./htmlEscapes', '../objects/keys'], function(htmlEscapes, keys) {
-
-  /** Used to match HTML entities and HTML characters */
-  var reUnescapedHtml = RegExp('[' + keys(htmlEscapes).join('') + ']', 'g');
-
-  return reUnescapedHtml;
-});
-
-/**
- * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
- * Build: `lodash modularize modern exports="amd" -o ./modern/`
- * Copyright 2012-2013 The Dojo Foundation <http://dojofoundation.org/>
- * Based on Underscore.js 1.5.2 <http://underscorejs.org/LICENSE>
- * Copyright 2009-2013 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
- * Available under MIT license <http://lodash.com/license>
- */
-define('lodash/utilities/escape',['../internals/escapeHtmlChar', '../objects/keys', '../internals/reUnescapedHtml'], function(escapeHtmlChar, keys, reUnescapedHtml) {
-
-  /**
-   * Converts the characters `&`, `<`, `>`, `"`, and `'` in `string` to their
-   * corresponding HTML entities.
-   *
-   * @static
-   * @memberOf _
-   * @category Utilities
-   * @param {string} string The string to escape.
-   * @returns {string} Returns the escaped string.
-   * @example
-   *
-   * _.escape('Fred, Wilma, & Pebbles');
-   * // => 'Fred, Wilma, &amp; Pebbles'
-   */
-  function escape(string) {
-    return string == null ? '' : String(string).replace(reUnescapedHtml, escapeHtmlChar);
-  }
-
-  return escape;
-});
-
-/**
- * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
- * Build: `lodash modularize modern exports="amd" -o ./modern/`
- * Copyright 2012-2013 The Dojo Foundation <http://dojofoundation.org/>
- * Based on Underscore.js 1.5.2 <http://underscorejs.org/LICENSE>
- * Copyright 2009-2013 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
- * Available under MIT license <http://lodash.com/license>
- */
-define('lodash/internals/escapeStringChar',[], function() {
-
-  /** Used to escape characters for inclusion in compiled string literals */
-  var stringEscapes = {
-    '\\': '\\',
-    "'": "'",
-    '\n': 'n',
-    '\r': 'r',
-    '\t': 't',
-    '\u2028': 'u2028',
-    '\u2029': 'u2029'
-  };
-
-  /**
-   * Used by `template` to escape characters for inclusion in compiled
-   * string literals.
-   *
-   * @private
-   * @param {string} match The matched character to escape.
-   * @returns {string} Returns the escaped character.
-   */
-  function escapeStringChar(match) {
-    return '\\' + stringEscapes[match];
-  }
-
-  return escapeStringChar;
-});
-
-/**
- * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
- * Build: `lodash modularize modern exports="amd" -o ./modern/`
- * Copyright 2012-2013 The Dojo Foundation <http://dojofoundation.org/>
- * Based on Underscore.js 1.5.2 <http://underscorejs.org/LICENSE>
- * Copyright 2009-2013 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
- * Available under MIT license <http://lodash.com/license>
- */
-define('lodash/internals/reInterpolate',[], function() {
-
-  /** Used to match "interpolate" template delimiters */
-  var reInterpolate = /<%=([\s\S]+?)%>/g;
-
-  return reInterpolate;
-});
-
-/**
- * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
- * Build: `lodash modularize modern exports="amd" -o ./modern/`
- * Copyright 2012-2013 The Dojo Foundation <http://dojofoundation.org/>
- * Based on Underscore.js 1.5.2 <http://underscorejs.org/LICENSE>
- * Copyright 2009-2013 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
- * Available under MIT license <http://lodash.com/license>
- */
-define('lodash/utilities/templateSettings',['./escape', '../internals/reInterpolate'], function(escape, reInterpolate) {
-
-  /**
-   * By default, the template delimiters used by Lo-Dash are similar to those in
-   * embedded Ruby (ERB). Change the following template settings to use alternative
-   * delimiters.
-   *
-   * @static
-   * @memberOf _
-   * @type Object
-   */
-  var templateSettings = {
-
-    /**
-     * Used to detect `data` property values to be HTML-escaped.
-     *
-     * @memberOf _.templateSettings
-     * @type RegExp
-     */
-    'escape': /<%-([\s\S]+?)%>/g,
-
-    /**
-     * Used to detect code to be evaluated.
-     *
-     * @memberOf _.templateSettings
-     * @type RegExp
-     */
-    'evaluate': /<%([\s\S]+?)%>/g,
-
-    /**
-     * Used to detect `data` property values to inject.
-     *
-     * @memberOf _.templateSettings
-     * @type RegExp
-     */
-    'interpolate': reInterpolate,
-
-    /**
-     * Used to reference the data object in the template text.
-     *
-     * @memberOf _.templateSettings
-     * @type string
-     */
-    'variable': '',
-
-    /**
-     * Used to import variables into the compiled template.
-     *
-     * @memberOf _.templateSettings
-     * @type Object
-     */
-    'imports': {
-
-      /**
-       * A reference to the `lodash` function.
-       *
-       * @memberOf _.templateSettings.imports
-       * @type Function
-       */
-      '_': { 'escape': escape }
-    }
-  };
-
-  return templateSettings;
-});
-
-/**
- * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
- * Build: `lodash modularize modern exports="amd" -o ./modern/`
- * Copyright 2012-2013 The Dojo Foundation <http://dojofoundation.org/>
- * Based on Underscore.js 1.5.2 <http://underscorejs.org/LICENSE>
- * Copyright 2009-2013 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
- * Available under MIT license <http://lodash.com/license>
- */
-define('lodash/utilities/template',['../objects/defaults', './escape', '../internals/escapeStringChar', '../objects/keys', '../internals/reInterpolate', './templateSettings', '../objects/values'], function(defaults, escape, escapeStringChar, keys, reInterpolate, templateSettings, values) {
-
-  /** Used as a safe reference for `undefined` in pre ES5 environments */
-  var undefined;
-
-  /** Used to match empty string literals in compiled template source */
-  var reEmptyStringLeading = /\b__p \+= '';/g,
-      reEmptyStringMiddle = /\b(__p \+=) '' \+/g,
-      reEmptyStringTrailing = /(__e\(.*?\)|\b__t\)) \+\n'';/g;
-
-  /**
-   * Used to match ES6 template delimiters
-   * http://people.mozilla.org/~jorendorff/es6-draft.html#sec-literals-string-literals
-   */
-  var reEsTemplate = /\$\{([^\\}]*(?:\\.[^\\}]*)*)\}/g;
-
-  /** Used to ensure capturing order of template delimiters */
-  var reNoMatch = /($^)/;
-
-  /** Used to match unescaped characters in compiled string literals */
-  var reUnescapedString = /['\n\r\t\u2028\u2029\\]/g;
-
-  /**
-   * A micro-templating method that handles arbitrary delimiters, preserves
-   * whitespace, and correctly escapes quotes within interpolated code.
-   *
-   * Note: In the development build, `_.template` utilizes sourceURLs for easier
-   * debugging. See http://www.html5rocks.com/en/tutorials/developertools/sourcemaps/#toc-sourceurl
-   *
-   * For more information on precompiling templates see:
-   * http://lodash.com/custom-builds
-   *
-   * For more information on Chrome extension sandboxes see:
-   * http://developer.chrome.com/stable/extensions/sandboxingEval.html
-   *
-   * @static
-   * @memberOf _
-   * @category Utilities
-   * @param {string} text The template text.
-   * @param {Object} data The data object used to populate the text.
-   * @param {Object} [options] The options object.
-   * @param {RegExp} [options.escape] The "escape" delimiter.
-   * @param {RegExp} [options.evaluate] The "evaluate" delimiter.
-   * @param {Object} [options.imports] An object to import into the template as local variables.
-   * @param {RegExp} [options.interpolate] The "interpolate" delimiter.
-   * @param {string} [sourceURL] The sourceURL of the template's compiled source.
-   * @param {string} [variable] The data object variable name.
-   * @returns {Function|string} Returns a compiled function when no `data` object
-   *  is given, else it returns the interpolated text.
-   * @example
-   *
-   * // using the "interpolate" delimiter to create a compiled template
-   * var compiled = _.template('hello <%= name %>');
-   * compiled({ 'name': 'fred' });
-   * // => 'hello fred'
-   *
-   * // using the "escape" delimiter to escape HTML in data property values
-   * _.template('<b><%- value %></b>', { 'value': '<script>' });
-   * // => '<b>&lt;script&gt;</b>'
-   *
-   * // using the "evaluate" delimiter to generate HTML
-   * var list = '<% _.forEach(people, function(name) { %><li><%- name %></li><% }); %>';
-   * _.template(list, { 'people': ['fred', 'barney'] });
-   * // => '<li>fred</li><li>barney</li>'
-   *
-   * // using the ES6 delimiter as an alternative to the default "interpolate" delimiter
-   * _.template('hello ${ name }', { 'name': 'pebbles' });
-   * // => 'hello pebbles'
-   *
-   * // using the internal `print` function in "evaluate" delimiters
-   * _.template('<% print("hello " + name); %>!', { 'name': 'barney' });
-   * // => 'hello barney!'
-   *
-   * // using a custom template delimiters
-   * _.templateSettings = {
-   *   'interpolate': /{{([\s\S]+?)}}/g
-   * };
-   *
-   * _.template('hello {{ name }}!', { 'name': 'mustache' });
-   * // => 'hello mustache!'
-   *
-   * // using the `imports` option to import jQuery
-   * var list = '<% jq.each(people, function(name) { %><li><%- name %></li><% }); %>';
-   * _.template(list, { 'people': ['fred', 'barney'] }, { 'imports': { 'jq': jQuery } });
-   * // => '<li>fred</li><li>barney</li>'
-   *
-   * // using the `sourceURL` option to specify a custom sourceURL for the template
-   * var compiled = _.template('hello <%= name %>', null, { 'sourceURL': '/basic/greeting.jst' });
-   * compiled(data);
-   * // => find the source of "greeting.jst" under the Sources tab or Resources panel of the web inspector
-   *
-   * // using the `variable` option to ensure a with-statement isn't used in the compiled template
-   * var compiled = _.template('hi <%= data.name %>!', null, { 'variable': 'data' });
-   * compiled.source;
-   * // => function(data) {
-   *   var __t, __p = '', __e = _.escape;
-   *   __p += 'hi ' + ((__t = ( data.name )) == null ? '' : __t) + '!';
-   *   return __p;
-   * }
-   *
-   * // using the `source` property to inline compiled templates for meaningful
-   * // line numbers in error messages and a stack trace
-   * fs.writeFileSync(path.join(cwd, 'jst.js'), '\
-   *   var JST = {\
-   *     "main": ' + _.template(mainText).source + '\
-   *   };\
-   * ');
-   */
-  function template(text, data, options) {
-    // based on John Resig's `tmpl` implementation
-    // http://ejohn.org/blog/javascript-micro-templating/
-    // and Laura Doktorova's doT.js
-    // https://github.com/olado/doT
-    var settings = templateSettings.imports._.templateSettings || templateSettings;
-    text = String(text || '');
-
-    // avoid missing dependencies when `iteratorTemplate` is not defined
-    options = defaults({}, options, settings);
-
-    var imports = defaults({}, options.imports, settings.imports),
-        importsKeys = keys(imports),
-        importsValues = values(imports);
-
-    var isEvaluating,
-        index = 0,
-        interpolate = options.interpolate || reNoMatch,
-        source = "__p += '";
-
-    // compile the regexp to match each delimiter
-    var reDelimiters = RegExp(
-      (options.escape || reNoMatch).source + '|' +
-      interpolate.source + '|' +
-      (interpolate === reInterpolate ? reEsTemplate : reNoMatch).source + '|' +
-      (options.evaluate || reNoMatch).source + '|$'
-    , 'g');
-
-    text.replace(reDelimiters, function(match, escapeValue, interpolateValue, esTemplateValue, evaluateValue, offset) {
-      interpolateValue || (interpolateValue = esTemplateValue);
-
-      // escape characters that cannot be included in string literals
-      source += text.slice(index, offset).replace(reUnescapedString, escapeStringChar);
-
-      // replace delimiters with snippets
-      if (escapeValue) {
-        source += "' +\n__e(" + escapeValue + ") +\n'";
-      }
-      if (evaluateValue) {
-        isEvaluating = true;
-        source += "';\n" + evaluateValue + ";\n__p += '";
-      }
-      if (interpolateValue) {
-        source += "' +\n((__t = (" + interpolateValue + ")) == null ? '' : __t) +\n'";
-      }
-      index = offset + match.length;
-
-      // the JS engine embedded in Adobe products requires returning the `match`
-      // string in order to produce the correct `offset` value
-      return match;
-    });
-
-    source += "';\n";
-
-    // if `variable` is not specified, wrap a with-statement around the generated
-    // code to add the data object to the top of the scope chain
-    var variable = options.variable,
-        hasVariable = variable;
-
-    if (!hasVariable) {
-      variable = 'obj';
-      source = 'with (' + variable + ') {\n' + source + '\n}\n';
-    }
-    // cleanup code by stripping empty strings
-    source = (isEvaluating ? source.replace(reEmptyStringLeading, '') : source)
-      .replace(reEmptyStringMiddle, '$1')
-      .replace(reEmptyStringTrailing, '$1;');
-
-    // frame code as the function body
-    source = 'function(' + variable + ') {\n' +
-      (hasVariable ? '' : variable + ' || (' + variable + ' = {});\n') +
-      "var __t, __p = '', __e = _.escape" +
-      (isEvaluating
-        ? ', __j = Array.prototype.join;\n' +
-          "function print() { __p += __j.call(arguments, '') }\n"
-        : ';\n'
-      ) +
-      source +
-      'return __p\n}';
-
-    try {
-      var result = Function(importsKeys, 'return ' + source ).apply(undefined, importsValues);
-    } catch(e) {
-      e.source = source;
-      throw e;
-    }
-    if (data) {
-      return result(data);
-    }
-    // provide the compiled function's source by its `toString` method, in
-    // supported environments, or the `source` property as a convenience for
-    // inlining compiled templates during the build process
-    result.source = source;
-    return result;
-  }
-
-  return template;
-});
-
-define('lib/fixtures',['can/util/fixture', 'lodash/collections/reduce', 'lodash/collections/contains', 'lodash/objects/assign', 'lodash/collections/forEach', 'lodash/utilities/template'], function(fixture, _reduce, _contains, _assign, _forEach, _template){
+define('lib/fixtures',[
+'can/util/fixture',
+'lodash/collections/reduce',
+'lodash/collections/contains',
+'lodash/objects/assign',
+'lodash/collections/forEach',
+], function(fixture, _reduce, _contains, _assign, _forEach){
 
 	var cleanUrl = function(url){
 		return url.split(' ').pop();
 	};
-
-	var protectedParams = ['order', 'limit', 'offset'];
-
-	var prepareParams = function(params){
-		return _reduce(params || {}, function(acc, val, key){
-			if(_contains(protectedParams, key)){
-				acc[key] = val
-			} else {
-				acc[key] = {'==' : val};
-			}
-			return acc;
-		}, {})
-	}
 
 	var fixturizer = function(url, fn){
 		var matchingUrl = cleanUrl(url);
@@ -7312,43 +6251,42 @@ define('lib/fixtures',['can/util/fixture', 'lodash/collections/reduce', 'lodash/
 				_assign(params, request.data || {});
 			}
 
-			params = prepareParams(params);
-
 			_forEach(params, function(val, key){
 				delete data[key];
-			})
+			});
 
 			try {
 				response = fn.length === 1 ? fn(params) : fn(params, data);
 				return response;
 			} catch(e) {
-				if(e === "MissingRecord"){
-					respondWith(404, JSON.stringify('{"error" : "Missing record"}'));
-				} else {
-					status = e.status || 406;
-					delete e.status;
-					respondWith(status, JSON.stringify(e));
-				}
+				status = e.status || 406;
+				delete e.status;
+				respondWith(status, JSON.stringify(e));
 			}
 		})
 	};
 
 	var endpoints = {
-		findOne : "GET <%= url %>/{id}",
-		findAll : "GET <%= url %>",
-		create  : "POST <%= url %>",
-		update  : "PUT <%= url %>/{id}",
-		destroy : "DELETE <%= url %>/{id}",
-	}
+		findOne : "GET %url%/{id}",
+		findAll : "GET %url%",
+		create  : "POST %url%",
+		update  : "PUT %url%/{id}",
+		destroy : "DELETE %url%/{id}",
+	};
+
+	var re = /%url%/;
 
 	fixturizer.resource = function(url, store){
 		_forEach(endpoints, function(template, action){
-			fixturizer(_template(template, {url : url}), store[action]);
+			fixturizer(template.replace(re, url), store.API[action]);
 		})
 	}
 
 	return fixturizer;
 });
+(function(root) {
+define("taffy", [], function() {
+      return (function() {
 /*
 
  Software License Agreement (BSD License)
@@ -9366,13 +8304,9 @@ if ( typeof(exports) === 'object' ){
   exports.taffy = TAFFY;
 }
 
-;
-define("taffy", (function (global) {
-    return function () {
-        var ret, fn;
-        return ret || global.TAFFY;
-    };
-}(this)));
+;return root.TAFFY = TAFFY;      }).apply(root, arguments);
+    });
+}(this));
 
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
@@ -9942,21 +8876,203 @@ define('lodash/objects/merge',['../internals/baseCreateCallback', '../internals/
   return merge;
 });
 
-define('lib/generator',[
-'can/construct',
+/**
+ * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
+ * Build: `lodash modularize modern exports="amd" -o ./modern/`
+ * Copyright 2012-2013 The Dojo Foundation <http://dojofoundation.org/>
+ * Based on Underscore.js 1.5.2 <http://underscorejs.org/LICENSE>
+ * Copyright 2009-2013 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
+ * Available under MIT license <http://lodash.com/license>
+ */
+define('lodash/objects/isArguments',[], function() {
+
+  /** `Object#toString` result shortcuts */
+  var argsClass = '[object Arguments]';
+
+  /** Used for native method references */
+  var objectProto = Object.prototype;
+
+  /** Used to resolve the internal [[Class]] of values */
+  var toString = objectProto.toString;
+
+  /**
+   * Checks if `value` is an `arguments` object.
+   *
+   * @static
+   * @memberOf _
+   * @category Objects
+   * @param {*} value The value to check.
+   * @returns {boolean} Returns `true` if the `value` is an `arguments` object, else `false`.
+   * @example
+   *
+   * (function() { return _.isArguments(arguments); })(1, 2, 3);
+   * // => true
+   *
+   * _.isArguments([1, 2, 3]);
+   * // => false
+   */
+  function isArguments(value) {
+    return value && typeof value == 'object' && typeof value.length == 'number' &&
+      toString.call(value) == argsClass || false;
+  }
+
+  return isArguments;
+});
+
+/**
+ * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
+ * Build: `lodash modularize modern exports="amd" -o ./modern/`
+ * Copyright 2012-2013 The Dojo Foundation <http://dojofoundation.org/>
+ * Based on Underscore.js 1.5.2 <http://underscorejs.org/LICENSE>
+ * Copyright 2009-2013 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
+ * Available under MIT license <http://lodash.com/license>
+ */
+define('lodash/internals/baseFlatten',['../objects/isArguments', '../objects/isArray'], function(isArguments, isArray) {
+
+  /**
+   * The base implementation of `_.flatten` without support for callback
+   * shorthands or `thisArg` binding.
+   *
+   * @private
+   * @param {Array} array The array to flatten.
+   * @param {boolean} [isShallow=false] A flag to restrict flattening to a single level.
+   * @param {boolean} [isStrict=false] A flag to restrict flattening to arrays and `arguments` objects.
+   * @param {number} [fromIndex=0] The index to start from.
+   * @returns {Array} Returns a new flattened array.
+   */
+  function baseFlatten(array, isShallow, isStrict, fromIndex) {
+    var index = (fromIndex || 0) - 1,
+        length = array ? array.length : 0,
+        result = [];
+
+    while (++index < length) {
+      var value = array[index];
+
+      if (value && typeof value == 'object' && typeof value.length == 'number'
+          && (isArray(value) || isArguments(value))) {
+        // recursively flatten arrays (susceptible to call stack limits)
+        if (!isShallow) {
+          value = baseFlatten(value, isShallow, isStrict);
+        }
+        var valIndex = -1,
+            valLength = value.length,
+            resIndex = result.length;
+
+        result.length += valLength;
+        while (++valIndex < valLength) {
+          result[resIndex++] = value[valIndex];
+        }
+      } else if (!isStrict) {
+        result.push(value);
+      }
+    }
+    return result;
+  }
+
+  return baseFlatten;
+});
+
+/**
+ * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
+ * Build: `lodash modularize modern exports="amd" -o ./modern/`
+ * Copyright 2012-2013 The Dojo Foundation <http://dojofoundation.org/>
+ * Based on Underscore.js 1.5.2 <http://underscorejs.org/LICENSE>
+ * Copyright 2009-2013 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
+ * Available under MIT license <http://lodash.com/license>
+ */
+define('lodash/objects/functions',['./forIn', './isFunction'], function(forIn, isFunction) {
+
+  /**
+   * Creates a sorted array of property names of all enumerable properties,
+   * own and inherited, of `object` that have function values.
+   *
+   * @static
+   * @memberOf _
+   * @alias methods
+   * @category Objects
+   * @param {Object} object The object to inspect.
+   * @returns {Array} Returns an array of property names that have function values.
+   * @example
+   *
+   * _.functions(_);
+   * // => ['all', 'any', 'bind', 'bindAll', 'clone', 'compact', 'compose', ...]
+   */
+  function functions(object) {
+    var result = [];
+    forIn(object, function(value, key) {
+      if (isFunction(value)) {
+        result.push(key);
+      }
+    });
+    return result.sort();
+  }
+
+  return functions;
+});
+
+/**
+ * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
+ * Build: `lodash modularize modern exports="amd" -o ./modern/`
+ * Copyright 2012-2013 The Dojo Foundation <http://dojofoundation.org/>
+ * Based on Underscore.js 1.5.2 <http://underscorejs.org/LICENSE>
+ * Copyright 2009-2013 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
+ * Available under MIT license <http://lodash.com/license>
+ */
+define('lodash/functions/bindAll',['../internals/baseFlatten', '../internals/createWrapper', '../objects/functions'], function(baseFlatten, createWrapper, functions) {
+
+  /**
+   * Binds methods of an object to the object itself, overwriting the existing
+   * method. Method names may be specified as individual arguments or as arrays
+   * of method names. If no method names are provided all the function properties
+   * of `object` will be bound.
+   *
+   * @static
+   * @memberOf _
+   * @category Functions
+   * @param {Object} object The object to bind and assign the bound methods to.
+   * @param {...string} [methodName] The object method names to
+   *  bind, specified as individual method names or arrays of method names.
+   * @returns {Object} Returns `object`.
+   * @example
+   *
+   * var view = {
+   *   'label': 'docs',
+   *   'onClick': function() { console.log('clicked ' + this.label); }
+   * };
+   *
+   * _.bindAll(view);
+   * jQuery('#docs').on('click', view.onClick);
+   * // => logs 'clicked docs', when the button is clicked
+   */
+  function bindAll(object) {
+    var funcs = arguments.length > 1 ? baseFlatten(arguments, true, false, 1) : functions(object),
+        index = -1,
+        length = funcs.length;
+
+    while (++index < length) {
+      var key = funcs[index];
+      object[key] = createWrapper(object[key], 1, null, null, object);
+    }
+    return object;
+  }
+
+  return bindAll;
+});
+
+define('lib/store',[
 './types',
 'taffy',
 'tv4',
-'lodash/functions/bind',
 'lodash/objects/clone',
-'lodash/collections/forEach',
 'lodash/objects/isArray',
 'lodash/objects/isFunction',
 'lodash/objects/isPlainObject',
 'lodash/collections/map',
 'lodash/objects/merge',
 'lodash/collections/reduce',
-'lodash/utilities/template'], function(Construct, types, Taffy, tv4, _bind, _clone, _each, _isArray, _isFunction, _isPlainObject, _map, _merge, _reduce, _template){
+'lodash/objects/assign',
+'lodash/functions/bindAll'
+], function(types, Taffy, tv4, _clone, _isArray, _isFunction, _isPlainObject, _map, _merge, _reduce, _assign, _bindAll){
 
 	var currentSchema = "";
 
@@ -10002,7 +9118,7 @@ define('lib/generator',[
 		return function(s){
 			return {
 				generate : function(){
-					var refSchema = getRef(Generator.rawSchemas[schemaName], ref.split('/'));
+					var refSchema = getRef(Store.rawSchemas[schemaName], ref.split('/'));
 					return determineGenerator(_merge(schema, refSchema))(_merge(schema, refSchema)).generate();
 				}
 			}
@@ -10186,112 +9302,32 @@ define('lib/generator',[
 		}
 	}
 
-	var prepareOrder = function(order){
-		if(_isArray(order)){
-			return order.join(', ');
+	var Store = function(name, storeCount, overrides, API){
+
+		if(typeof this.constructor === 'undefined'){
+			return new Store(name, storeCount, overrides);
 		}
-		return order;
+
+		this._schema = this.constructor.schemas[name];
+		this._rawSchema = this.constructor.rawSchemas[name];
+		this._schemaName = name;
+		this._overrides = overrides || {};
+
+		if(!this._rawSchema){
+			throw new Error('Apitizer: Missing schema named "' + this._schemaName + '"');
+		}
+
+		this.API = _bindAll(new API(this));
+		
+		this.db = Taffy();
+		this.fillStore(storeCount || 0);
 	}
 
-	var getRecordset = function(store, params){
-		var items, order, limit, offset;
-
-		order  = params.order;
-		limit  = params.limit;
-		offset = params.offset;
-
-		delete params.order;
-		delete params.limit;
-		delete params.offset;
-
-		items = store(params);
-
-		if(order){
-			items = items.order(prepareOrder(order));
-		}
-		if(limit){
-			items = items.limit(parseInt(limit, 10));
-		}
-		if(offset){
-			items = items.start(offset);
-		}
-
-		return items;
-	}
-
-	var API = {
-		findOne : function(params){
-			var items = getRecordset(this.store, params);
-			if(items.count()){
-				return items.first();
-			} else {
-				throw "MissingRecord";
-			}
-		},
-		findAll : function(params){
-			var results = {},
-				limit = params.limit,
-				offset = params.offset,
-				items = getRecordset(this.store, params);
-
-			results.data = items.get();
-			results.count = items.count();
-
-			if(limit){
-				results.limit = limit;
-			}
-
-			if(offset){
-				results.offset = offset;
-			}
-
-			return results;
-		},
-		create : function(params, data){
-			var item = _merge(this.generate(), data),
-				validation = this.validate(item);
-
-			if(validation.valid){
-				this.store.insert(item);
-			} else {
-				throw validation.errors;
-			}
-			return item;
-		},
-		update : function(params, data){
-			var items = getRecordset(this.store, params),
-				item, validation;
-
-			if(items.count() === 0){
-				throw "MissingRecord";
-			}
-
-			item = _merge(items.first(), data);
-			validation = this.validate(item);
-
-			if(validation.valid){
-				items.update(item);
-				return item;
-			} else {
-				throw validation.errors;
-			}
-
-		},
-		destroy : function(params){
-			var items = getRecordset(this.store, params);
-			if(items.count()){
-				items.remove();
-				return {};
-			} else {
-				throw "MissingRecord";
-			}
-		}
-	}
-
-	var Generator = Construct.extend({
+	_assign(Store, {
 		rawSchemas : {},
 		schemas : {},
 		addSchema : function(name, schema){
+			// TODO: remove currentSchema manipulation when adding schema
 			currentSchema = name;
 			this.rawSchemas[name] = schema;
 			this.schemas[name] = determineGenerator(schema)(schema);
@@ -10318,46 +9354,28 @@ define('lib/generator',[
 				return 'failed validation by the ' + name + ' format';
 			})
 		}
-	},{
-		init : function(name, storeCount, overrides){
-			var self = this;
+	});
 
-			this._schema = this.constructor.schemas[name];
-			this._rawSchema = this.constructor.rawSchemas[name];
-			this._schemaName = name;
-			this._overrides = overrides || {};
-
-			if(!this._rawSchema){
-				throw new Error(_template('Apitizer: Missing schema named "<%= _schemaName %>"', this));
-			}
-			
-			this.store = Taffy();
-			this.fillStore(storeCount || 0);
-
-			_each(API, function(fn, name){
-				self[name] = _bind(fn, self);
-			});
-
-		},
+	_assign(Store.prototype, {
 		generate : function(overrides){
 			return generateFromSchema(this._schema, this._rawSchema, overrides || this._overrides);
 		},
 		fillStore : function(count){
-			for(var i = this.store().count(); i < count; i++){
-				this.store.insert(this.generate());
+			for(var i = this.db().count(); i < count; i++){
+				this.db.insert(this.generate());
 			}
 			this.makeRandomizer();
 		},
 		add : function(overrides){
 			var data = this.generate(overrides);
 
-			this.store.insert(data);
+			this.db.insert(data);
 			this.makeRandomizer();
 
 			return data;
 		},
 		makeRandomizer : function(){
-			var count = this.store().count();
+			var count = this.db().count();
 
 			if(count === 0){
 				this.randomizer = {
@@ -10368,7 +9386,7 @@ define('lib/generator',[
 			} else {
 				this.randomizer = types.integer({
 					minimum : 0,
-					maximum : this.store().count(),
+					maximum : this.db().count(),
 					exclusiveMaximum : true
 				});
 			}
@@ -10377,12 +9395,12 @@ define('lib/generator',[
 			var self = this;
 
 			return function(){
-				return self.store().get()[self.randomizer.generate()];
+				return self.db().get()[self.randomizer.generate()];
 			}
 		},
 		many : function(min, max){
 			var self = this,
-				storeCount = this.store().count(),
+				storeCount = this.db().count(),
 				randLength;
 
 			min = min || 0;
@@ -10396,7 +9414,7 @@ define('lib/generator',[
 			return function(){
 				var length = randLength.generate(),
 					result = [],
-					store = self.store().get(),
+					store = self.db().get(),
 					start =  self.randomizer.generate();
 
 				if(start + length >= storeCount){
@@ -10414,18 +9432,159 @@ define('lib/generator',[
 			return tv4.validateMultiple(data, this._schemaName);
 		}
 		
-	})
+	});
 
-	return Generator;
+	return Store;
+});
+define('lib/api',[
+'lodash/objects/assign',
+'lodash/objects/merge',
+'lodash/objects/isArray',
+'lodash/collections/contains',
+'lodash/collections/reduce'
+], function(_assign, _merge, _isArray, _contains, _reduce){
+
+	var API = function(store){
+		this.store = store;
+	};
+
+	_assign(API.prototype, {
+		findOne : function(params){
+
+			params = this._prepareParams(params);
+
+			var items = this._getRecordset(params);
+			if(items.count()){
+				return items.first();
+			} else {
+				throw this._formatException({errors: ["MissingRecord"], status: 404});
+			}
+		},
+		findAll : function(params){
+
+			params = this._prepareParams(params);
+
+			var results = {},
+				limit = params.limit,
+				offset = params.offset,
+				items = this._getRecordset(params);
+
+			results.data = items.get();
+			results.count = items.count();
+
+			if(limit){
+				results.limit = limit;
+			}
+
+			if(offset){
+				results.offset = offset;
+			}
+
+			return results;
+		},
+		create : function(params, data){
+			var item = _merge(this.store.generate(), data),
+				validation = this.store.validate(item);
+
+			if(validation.valid){
+				this.store.db.insert(item);
+			} else {
+				throw this._formatException({errors: validation.errors, status: 406});
+			}
+			return item;
+		},
+		update : function(params, data){
+
+			params = this._prepareParams(params);
+
+			var items = this._getRecordset(params),
+				item, validation;
+
+			if(items.count() === 0){
+				throw this._formatException({errors: ["MissingRecord"], status: 404});
+			}
+
+			item = _merge(items.first(), data);
+			validation = this.store.validate(item);
+
+			if(validation.valid){
+				items.update(item);
+				return item;
+			} else {
+				throw this._formatException({errors: validation.errors, status: 406});
+			}
+
+		},
+		destroy : function(params){
+
+			params = this._prepareParams(params);
+
+			var items = this._getRecordset(params);
+			if(items.count()){
+				items.remove();
+				return {};
+			} else {
+				throw this._formatException({errors: ["MissingRecord"], status: 404});
+			}
+		},
+		_getRecordset : function(params){
+			var items, order, limit, offset;
+
+			order  = params.order;
+			limit  = params.limit;
+			offset = params.offset;
+
+			delete params.order;
+			delete params.limit;
+			delete params.offset;
+
+			items = this.store.db(params);
+
+			if(order){
+				items = items.order(this._prepareOrder(order));
+			}
+			if(limit){
+				items = items.limit(parseInt(limit, 10));
+			}
+			if(offset){
+				items = items.start(offset);
+			}
+
+			return items;
+		},
+		_prepareOrder : function(order){
+			if(_isArray(order)){
+				return order.join(', ');
+			}
+			return order;
+		},
+		_prepareParams : function(params){
+			var protectedParams = ['order', 'limit', 'offset'];
+
+			return _reduce(params || {}, function(acc, val, key){
+				if(_contains(protectedParams, key)){
+					acc[key] = val;
+				} else {
+					acc[key] = {'==' : val};
+				}
+				return acc;
+			}, {});
+		},
+		_formatException : function(ex){
+			return ex;
+		}
+	});
+
+	return API;
 });
 define('apitizer',[
-	'can/construct',
 	'tv4',
 	'./lib/types',
 	'lodash/collections/forEach',
 	'./lib/fixtures',
-	'./lib/generator',
-], function(Construct, tv4, types, _forEach, fixture, Generator){
+	'./lib/store',
+	'./lib/api',
+], function(tv4, types, _forEach, fixture, Store, API){
 
 	types.formats = types.formats || {};
 
@@ -10440,29 +9599,35 @@ define('apitizer',[
 
 	return {
 		addSchema : function(name, schema){
-			Generator.addSchema(name, schema);
+			Store.addSchema(name, schema);
 		},
 		getSchema : function(name){
-			return Generator.getSchema(name);
+			return Store.getSchema(name);
 		},
 		dropSchemas : function(){
-			Generator.dropSchemas();
+			Store.dropSchemas();
 		},
 		validateWithSchema : function(name, data){
-			return Generator.validateWithSchema(name, data);
+			return Store.validateWithSchema(name, data);
 		},
-		generateFromSchema : function(name, overrides){
-			return (new Generator(name, 0, overrides)).generate();
+		generateFromSchema : function(name, overrides, api){
+			return (new Store(name, 0, overrides, api || this.API)).generate();
 		},
-		schemaStore : function(name, storeCount, overrides){
-			return new Generator(name, storeCount, overrides);
+		schemaStore : function(name, storeCount, overrides, api){
+			return new Store(name, storeCount, overrides, api || this.API);
 		},
 		addFormat : function(name, format){
-			Generator.addFormat(name, format);
+			Store.addFormat(name, format);
 		},
 		types : types,
-		fixture : fixture
+		fixture : fixture,
+		API : API
 	};
 });
+    if(typeof jQuery !== 'undefined'){
+        define( "jquery", [], function() {
+            return jQuery;
+        });
+    }
     return require('apitizer');
 }));

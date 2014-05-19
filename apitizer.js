@@ -1,12 +1,11 @@
 define([
-	'can/construct',
 	'tv4',
 	'./lib/types',
 	'lodash/collections/forEach',
 	'./lib/fixtures',
 	'./lib/store',
 	'./lib/api',
-], function(Construct, tv4, types, _forEach, fixture, Store, API){
+], function(tv4, types, _forEach, fixture, Store, API){
 
 	types.formats = types.formats || {};
 

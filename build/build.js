@@ -25,6 +25,7 @@
 			exports : 'TAFFY'
 		}
 	},
+	wrapShim : true,
 	packages : [{
 		name : 'lodash',
 		location : 'bower_components/lodash-amd/modern'
