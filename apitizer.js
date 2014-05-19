@@ -2,14 +2,14 @@ define([
 	'can/construct',
 	'tv4',
 	'./lib/types',
-	'lodash',
+	'lodash/collections/forEach',
 	'./lib/fixtures',
 	'./lib/generator',
-], function(Construct, tv4, types, _, fixture, Generator){
+], function(Construct, tv4, types, _forEach, fixture, Generator){
 
 	types.formats = types.formats || {};
 
-	_.forEach(types.formats, function(format, name){
+	_forEach(types.formats, function(format, name){
 		tv4.addFormat('name', function(val){
 			if(format.validate(val)){
 				return null;

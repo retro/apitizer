@@ -5,7 +5,6 @@ requirejs.config({
     mustache : 'bower_components/require-can-renderers/lib/mustache',
     ejs      : 'bower_components/require-can-renderers/lib/ejs',
     faker    : 'bower_components/Faker.js/Faker',
-    lodash   : 'bower_components/lodash/dist/lodash',
     tv4      : 'bower_components/tv4/tv4',
     RandExp  : 'bower_components/Randexp.js/index',
     taffy    : 'bower_components/taffydb/taffy'
@@ -17,5 +16,9 @@ requirejs.config({
     taffy : {
       exports : 'TAFFY'
     }
-  }
+  },
+  packages : [{
+    name : 'lodash',
+    location : 'bower_components/lodash-amd/modern'
+  }]
 });
