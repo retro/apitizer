@@ -38,12 +38,12 @@ define(['apitizer', 'jquery'], function(apitizer, $) {
 			});
 
 			apitizer.fixture('POST /login', function(params, data){
-				var member = store.store(data).first();
+				var member = store.db(data).first();
 
 				if(member){
 					return member;
 				} else {
-					throw { error: 'Wrong login credentials.', status: 403 };
+					throw { errors: ['Wrong login credentials.'], status: 403 };
 				}
 
 			});

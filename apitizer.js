@@ -4,8 +4,9 @@ define([
 	'./lib/types',
 	'lodash/collections/forEach',
 	'./lib/fixtures',
-	'./lib/generator',
-], function(Construct, tv4, types, _forEach, fixture, Generator){
+	'./lib/store',
+	'./lib/api',
+], function(Construct, tv4, types, _forEach, fixture, Store, API){
 
 	types.formats = types.formats || {};
 
@@ -20,27 +21,28 @@ define([
 
 	return {
 		addSchema : function(name, schema){
-			Generator.addSchema(name, schema);
+			Store.addSchema(name, schema);
 		},
 		getSchema : function(name){
-			return Generator.getSchema(name);
+			return Store.getSchema(name);
 		},
 		dropSchemas : function(){
-			Generator.dropSchemas();
+			Store.dropSchemas();
 		},
 		validateWithSchema : function(name, data){
-			return Generator.validateWithSchema(name, data);
+			return Store.validateWithSchema(name, data);
 		},
-		generateFromSchema : function(name, overrides){
-			return (new Generator(name, 0, overrides)).generate();
+		generateFromSchema : function(name, overrides, api){
+			return (new Store(name, 0, overrides, api || this.API)).generate();
 		},
-		schemaStore : function(name, storeCount, overrides){
-			return new Generator(name, storeCount, overrides);
+		schemaStore : function(name, storeCount, overrides, api){
+			return new Store(name, storeCount, overrides, api || this.API);
 		},
 		addFormat : function(name, format){
-			Generator.addFormat(name, format);
+			Store.addFormat(name, format);
 		},
 		types : types,
-		fixture : fixture
+		fixture : fixture,
+		API : API
 	};
 })
