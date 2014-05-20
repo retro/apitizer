@@ -2,6 +2,8 @@
 
 APItizer is a library that allows you to mock APIs for browser applications with JSON schema. JSON schema is usually used to validate responses from APIs, but APItizer adds the ability to generate data from the same structure.
 
+APItizer requires understanding of the JSON schema syntax and I can recommend [this guide](http://spacetelescope.github.io/understanding-json-schema/) to get you started.
+
 ## Why
 
 When developing single page apps, it is beneficial to develop frontend and backend in parallel. To achieve that, you need to mock the API. CanJS implements this elegantly with the `can.fixture` plugin (used by APItizer). `can.fixture` intercepts AJAX calls and returns response defined by the fixtures.
@@ -44,6 +46,16 @@ This will create a store with 10 users in it and add all REST API endpoints:
 	POST /users
 	PUT /users/{id}
 	DELETE /users/{id}
+
+Now you can normally use AJAX functions and they will hit the mocked API:
+
+	$.get('/users') // Response will return 10 users
+	$.get('/users/1') // Response will return the user with the id 1
+	$.post('/users', {username : 'foo', password : 'bar'}) // User will be created and saved to the store
+	$.ajax('/users/1', {type : 'put', data : {username : 'baz'}}) // User with the id 1 will be updated
+	$.ajax('/users/1', {type : 'delete'}) '' User with the id 1 will be destroyed and removed from the store
+
+## Overriding generators
 
 APItizer implements it's own generators for all types supported by the JSON schema, but sometimes you want more control over the data that is being generated. To achieve this, you can pass overrides to the store:
 
@@ -127,3 +139,59 @@ Each article will contain generated `author` object, but that author object will
 	});
 
 In this case `authorStore.one()` will return a random object from the store, and that object will be embedded in the `author` property of the `article`.
+
+
+## Custom data and API endpoints
+
+In some cases you might need additional API points that can handle some specific task. For instance you might have `/login` endpoint where users can login. This action will still use the `users` store, but will have to behave differently than the default REST actions. Also, for development and testing you need a user with the known credentials, so you can actually login to the app. Here is how you can solve this problem with APItizer:
+
+	var schema = {
+		type : "object",
+		properties : {
+			id : {
+				type : "integer"
+			},
+			username : {
+				type : "string"
+			},
+			password : {
+				type : "string"
+			}
+		}
+	}, userStore;
+
+	apitizer.addSchema('user', schema);
+	userStore = apitizer.schemaStore('user', 0, {
+		id : apitizer.types.autoincrement()
+	})
+
+Here we have defined the schema, and created an empty store, now we can add some custom data:
+
+	userStore.add({
+		username : 'retro',
+		password : '1337'
+	});
+
+This will create a user with known credentials. Now all we need to do is create the `/login` endpoint:
+
+	apitizer.fixture('POST /login', function(params){
+		var users = userStore.db(params) // Search the data in the store's database
+		if(users.count() === 0){
+			throw {errors: ['Wrong credentials'], status: 401}
+		} else {
+			return users.first();
+		}
+	});
+
+_APItizer uses the excellent [TaffyDB](http://www.taffydb.com) library to store the data, so you can use it's [fancy querying possibilities](http://www.taffydb.com/workingwithdata) to get the data._
+
+Now you can emulate the login process by POSTing to the `/login` endpoint:
+
+	$.post('/login', {
+		username : 'retro',
+		password : 1338
+	}).then(function(user){
+		alert('You logged in!')
+		}, function(error){
+		alert('Wrong credentials!')
+	});

@@ -8,7 +8,7 @@ define(['apitizer', 'jquery'], function(apitizer, $) {
 		});
 
 		asyncTest("Login endpoint", function(){
-			expect(2);
+			expect(3);
 
 			var schema = {
 					properties : {
@@ -22,7 +22,7 @@ define(['apitizer', 'jquery'], function(apitizer, $) {
 							type : 'string'
 						}
 					}
-				}, store;
+				}, store, obj;
 
 			apitizer.addSchema('member', schema);
 
@@ -32,10 +32,12 @@ define(['apitizer', 'jquery'], function(apitizer, $) {
 
 			apitizer.fixture.resource('/members', store);
 
-			store.add({
+			obj = store.add({
 				username : 'retro',
 				password : '1337'
 			});
+
+			equal(obj.id, 1, "Member has id assigned");
 
 			apitizer.fixture('POST /login', function(params, data){
 				var member = store.db(data).first();
