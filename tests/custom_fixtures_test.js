@@ -63,7 +63,8 @@ define(['apitizer', 'jquery'], function(apitizer, $) {
 			}).fail(function(error){
 				equal(error.status, 403, "Correct status is returned from the login endpoint");
 				start();
-			})
+			});
+			
 		})
 
 	};

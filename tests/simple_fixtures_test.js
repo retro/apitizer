@@ -55,6 +55,19 @@ define(['apitizer', 'jquery'], function(apitizer, $) {
 			});
 		});
 
+		asyncTest("Limit doesn't affect count", function(){
+			expect(2);
+
+			$.get('/users', {
+				limit : 2,
+				offset : 1
+			}).then(function(users){
+				equal(users.count, 10, "Users count is correct");
+				equal(users.data.length, 2, "Two users were returned");
+				start();
+			})
+		})
+
 		asyncTest("Create a user", function(){
 			expect(3);
 
@@ -179,7 +192,7 @@ define(['apitizer', 'jquery'], function(apitizer, $) {
 				limit : 2,
 				offset : 1,
 			}).then(function(users){
-				equal(users.count, 2, "Two users are returned");
+				equal(users.data.length, 2, "Two users are returned");
 				ok(users.data[0].id === 10 && users.data[1].id === 9, "Users are returned in desc sort");
 				start();
 			})
