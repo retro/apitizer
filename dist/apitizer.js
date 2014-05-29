@@ -2932,6 +2932,97 @@ define('lib/types/_helpers',['lodash/objects/assign'], function(_extend){
 
 	return helpers;
 });
+define('lib/types/integer',['./_helpers'], function(h){
+	return h.type({
+		minimum: 0,
+		maximum: 1,
+		multipleOf : null,
+		exclusiveMaximum : false,
+		exclusiveMinimum : false
+	}, function(opts){
+		var min = parseInt(opts.exclusiveMinimum ? opts.minimum + 1 : opts.minimum, 10),
+			max = parseInt(opts.exclusiveMaximum ? opts.maximum - 1 : opts.maximum, 10);
+
+		if(max < min){
+			throw new Error("Apitizer/Integer type: Minimum can't be bigger than maximum. Passed options: " + JSON.stringify(opts));
+		}
+
+		return {
+			generate : function(){
+				var val = Math.floor(Math.random() * (max - min + 1)) + min;
+				return opts.multipleOf ? val - (val % opts.multipleOf) : val;
+			},
+			validate : function(val){
+				var check = (typeof val === 'number') && (val >= min && val <= max);
+				return check && (val % opts.multipleOf === 0);
+			}
+		}
+	})
+});
+define('lib/types/formats/date-time',['../_helpers', '../integer'], function(h, integer){
+
+	var re = /^([\+-]?\d{4}(?!\d{2}\b))((-?)((0[1-9]|1[0-2])(\3([12]\d|0[1-9]|3[01]))?|W([0-4]\d|5[0-2])(-?[1-7])?|(00[1-9]|0[1-9]\d|[12]\d{2}|3([0-5]\d|6[1-6])))([T\s]((([01]\d|2[0-3])((:?)[0-5]\d)?|24\:?00)([\.,]\d+(?!:))?)?(\17[0-5]\d([\.,]\d+)?)?([zZ]|([\+-])([01]\d|2[0-3]):?([0-5]\d)?)?)?)?$/;
+
+	return h.type({
+		minimum : (function(){ var d = new Date; d.setTime(0); return d})(),
+		maximum : new Date
+	}, function(opts){
+		return {
+			generate : function(){
+				var date = new Date;
+
+				date.setTime(integer({
+					minimum : opts.min.getTime(),
+					maximum : opts.max.getTime(),
+				}).generate());
+
+				return date.toISOString();
+			},
+			validate : function(val){
+				return typeof val === "string" && re.test(val);
+			}
+		}
+	})
+});
+define('lib/types/formats/ipv4',['../_helpers', '../integer'], function(h, integer){
+
+	var re = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+
+	return h.type(function(opts){
+		var g = integer({
+			minimum : 1,
+			maximum : 255
+		}).generate;
+
+		return {
+			generate : function(){
+				return [g(), g(), g(), g()].join('.');
+			},
+			validate : function(val){
+				return typeof val === "string" && re.test(val);
+			}
+		}
+	})
+});
+define('lib/types/formats/ipv6',['../_helpers', '../integer'], function(h, integer){
+
+	var re = /^((?=.*::)(?!.*::.+::)(::)?([\dA-F]{1,4}:(:|\b)|){5}|([\dA-F]{1,4}:){6})((([\dA-F]{1,4}((?!\3)::|:\b|$))|(?!\2\3)){2}|(((2[0-4]|1\d|[1-9])?\d|25[0-5])\.?\b){4})$/i;
+
+	return h.type(function(opts){
+		var g = function(){
+			return Math.floor(Math.random()*65535).toString(16);
+		};
+
+		return {
+			generate : function(){
+				return [g(), g(), g(), g(), g(), g(), g(), g()].join(':').toUpperCase();
+			},
+			validate : function(val){
+				return typeof val === "string" && re.test(val);
+			}
+		}
+	})
+});
 define('lib/types/string',['./_helpers'], function(h){
 
 	var LIPSUM = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas feugiat pretium dictum. Praesent non erat nunc. Sed fringilla sollicitudin blandit. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Aliquam quam nulla, pretium in laoreet aliquet, lobortis vel dolor. Nullam vehicula ut sapien eget feugiat. Fusce vel imperdiet lacus. Ut eu vestibulum dui, et bibendum dui. Nam adipiscing nisi nec volutpat rutrum. Donec non quam dolor. In hac habitasse platea dictumst. Praesent scelerisque aliquam metus vel vehicula. Cras malesuada quam tincidunt libero aliquam, ut feugiat felis lacinia.";
@@ -2968,32 +3059,128 @@ define('lib/types/string',['./_helpers'], function(h){
 		}
 	})
 });
-define('lib/types/integer',['./_helpers'], function(h){
-	return h.type({
-		minimum: 0,
-		maximum: 1,
-		multipleOf : null,
-		exclusiveMaximum : false,
-		exclusiveMinimum : false
-	}, function(opts){
-		var min = parseInt(opts.exclusiveMinimum ? opts.minimum + 1 : opts.minimum, 10),
-			max = parseInt(opts.exclusiveMaximum ? opts.maximum - 1 : opts.maximum, 10);
+define('lib/types/formats/email',['../_helpers', '../integer', '../string'], function(h, integer, string){
 
-		if(max < min){
-			throw new Error("Apitizer/Integer type: Minimum can't be bigger than maximum. Passed options: " + JSON.stringify(opts));
-		}
+	var re = /^([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x22([^\x0d\x22\x5c\x80-\xff]|\x5c[\x00-\x7f])*\x22)(\x2e([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x22([^\x0d\x22\x5c\x80-\xff]|\x5c[\x00-\x7f])*\x22))*\x40([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x5b([^\x0d\x5b-\x5d\x80-\xff]|\x5c[\x00-\x7f])*\x5d)(\x2e([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x5b([^\x0d\x5b-\x5d\x80-\xff]|\x5c[\x00-\x7f])*\x5d))*$/;
+
+	return h.type(function(opts){
+		
+		var strings = string().generate().split(' '),
+			rand   = integer({
+				maximum : strings.length,
+				exclusiveMaximum : true
+			}).generate;
 
 		return {
 			generate : function(){
-				var val = Math.floor(Math.random() * (max - min + 1)) + min;
-				return opts.multipleOf ? val - (val % opts.multipleOf) : val;
+				return [strings[rand()].replace(/[^a-zA-Z-_0-9]/g, ''), 'example.com'].join('@');
 			},
 			validate : function(val){
-				var check = (typeof val === 'number') && (val >= min && val <= max);
-				return check && (val % opts.multipleOf === 0);
+				return typeof val === "string" && re.test(val);
 			}
 		}
 	})
+});
+define('lib/types/formats/hostname',['../_helpers', '../integer', '../string'], function(h, integer, string){
+
+	var re = /^(([a-zA-Z]{1})|([a-zA-Z]{1}[a-zA-Z]{1})|([a-zA-Z]{1}[0-9]{1})|([0-9]{1}[a-zA-Z]{1})|([a-zA-Z0-9][a-zA-Z0-9-_]{1,61}[a-zA-Z0-9]))\.([a-zA-Z]{2,6}|[a-zA-Z0-9-]{2,30}\.[a-zA-Z]{2,3})$/;
+
+	return h.type(function(opts){
+		
+		var suffix = ['com', 'info', 'net', 'biz', 'edu', 'hr'],
+			rand   = integer({
+				maximum : suffix.length,
+				exclusiveMaximum : true
+			}).generate;
+
+		return {
+			generate : function(){
+				return ['example', suffix[rand()]].join('.');
+			},
+			validate : function(val){
+				return typeof val === "string" && re.test(val);
+			}
+		}
+	})
+});
+define('lib/types/formats/uri',['../_helpers', '../integer', '../string', './hostname'], function(h, integer, string, hostname){
+
+	var re = /(https?|ftp):\/\/(((([a-zA-Z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:)*@)?(((\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])\.(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])\.(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])\.(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5]))|((([a-zA-Z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(([a-zA-Z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])([a-zA-Z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])*([a-zA-Z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])))\.)+(([a-zA-Z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(([a-zA-Z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])([a-zA-Z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])*([a-zA-Z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])))\.?)(:\d*)?)(\/((([a-zA-Z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:|@)+(\/(([a-zA-Z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:|@)*)*)?)?(\?((([a-zA-Z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:|@)|[\uE000-\uF8FF]|\/|\?)*)?(\#((([a-zA-Z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:|@)|\/|\?)*)?/;
+
+	return h.type(function(opts){
+		
+		var seed = integer({
+				maximum : 1000
+			}).generate,
+			rand = integer({
+				maximum : 3,
+				exclusiveMaximum : true
+			}).generate,
+			chance = function(){
+				return seed() % rand() === 0;
+			},
+			hostnameGen = hostname().generate,
+			strings = string().generate().split(' '),
+			randString = integer({
+				maximum : strings.length,
+				exclusiveMaximum : true
+			}).generate,
+			schemes = ["http", "https", "ftp"],
+			exts = ['html', 'php', 'aspx'],
+			cleanString = function(str){
+				return str.replace(/[^a-zA-Z-_0-9]/g, '');
+			}
+
+		return {
+			generate : function(){
+				var scheme = schemes[rand()] + "://",
+					host   = hostnameGen(),
+					path   = "",
+					filename = ""
+					query = "",
+					fragment = "";
+
+				if(chance()){
+					path = "/" + cleanString(strings[randString()]);
+				}
+
+				if(chance()){
+					filename = "/" + cleanString(strings[randString()]) + '.' + exts[rand()];
+				}
+
+				if(chance()){
+					query = "?" + cleanString(strings[randString()]);
+				}
+
+				if(chance()){
+					fragment = "#" + cleanString(strings[randString()]);
+				}
+
+				return scheme + host + path + filename + query + fragment;
+
+			},
+			validate : function(val){
+				return typeof val === "string" && re.test(val);
+			}
+		}
+	})
+});
+define('lib/types/formats/formats',[
+'lib/types/formats/date-time',
+'lib/types/formats/ipv4',
+'lib/types/formats/ipv6',
+'lib/types/formats/email',
+'lib/types/formats/hostname',
+'lib/types/formats/uri'
+], function(dateTime, ipv4, ipv6, email, hostname, uri){
+	return {
+		'date-time' : dateTime,
+		'ipv4' : ipv4,
+		'ipv6' : ipv6,
+		'email' : email,
+		'hostname' : hostname,
+		'uri' : uri
+	}
 });
 define('lib/types/decimal',['./_helpers'], function(h){
 	return h.type({
@@ -3014,31 +3201,6 @@ define('lib/types/decimal',['./_helpers'], function(h){
 			validate : function(val){
 				var check = (typeof val === 'number') && (val >= min && val <= max);
 				return check && (val % opts.multipleOf === 0);
-			}
-		}
-	})
-});
-define('lib/types/date',['./_helpers', './integer'], function(h, integer){
-
-	var re = /^([\+-]?\d{4}(?!\d{2}\b))((-?)((0[1-9]|1[0-2])(\3([12]\d|0[1-9]|3[01]))?|W([0-4]\d|5[0-2])(-?[1-7])?|(00[1-9]|0[1-9]\d|[12]\d{2}|3([0-5]\d|6[1-6])))([T\s]((([01]\d|2[0-3])((:?)[0-5]\d)?|24\:?00)([\.,]\d+(?!:))?)?(\17[0-5]\d([\.,]\d+)?)?([zZ]|([\+-])([01]\d|2[0-3]):?([0-5]\d)?)?)?)?$/;
-
-	return h.type({
-		minimum : (function(){ var d = new Date; d.setTime(0); return d})(),
-		maximum : new Date
-	}, function(opts){
-		return {
-			generate : function(){
-				var date = new Date;
-
-				date.setTime(integer({
-					minimum : opts.min.getTime(),
-					maximum : opts.max.getTime(),
-				}).generate());
-
-				return date.toISOString();
-			},
-			validate : function(val){
-				return typeof val === "string" && re.test(val);
 			}
 		}
 	})
@@ -3842,17 +4004,17 @@ define('lib/types/autoincrement',['./_helpers'], function(h){
 		}
 	})
 });
-var TYPES = ['string', 'integer', 'decimal', 'date', 'boolean', 'composite', 'number', 'randexp', 'array', 'autoincrement'],
-	fn = function(_forEach, _toArray){
+var TYPES = ['string', 'integer', 'decimal', 'boolean', 'composite', 'number', 'randexp', 'array', 'autoincrement'],
+	fn = function(_forEach, _toArray, formats){
 		var startAt = fn.length,
 			args = _toArray(arguments).slice(startAt, arguments.length);
 			types = {};
 
 		_forEach(TYPES, function(type, i){
 			types[type] = args[i];
-		})
+		});
 
-		window.types = types;
+		types.formats = formats;
 
 		return types;
 	}
@@ -3860,16 +4022,16 @@ var TYPES = ['string', 'integer', 'decimal', 'date', 'boolean', 'composite', 'nu
 define('lib/types',[
 'lodash/collections/forEach',
 'lodash/collections/toArray',
-'./types/string',
-'./types/integer',
-'./types/decimal',
-'./types/date',
-'./types/boolean',
-'./types/composite',
-'./types/number',
-'./types/randexp',
-'./types/array',
-'./types/autoincrement'],
+'lib/types/formats/formats',
+'lib/types/string',
+'lib/types/integer',
+'lib/types/decimal',
+'lib/types/boolean',
+'lib/types/composite',
+'lib/types/number',
+'lib/types/randexp',
+'lib/types/array',
+'lib/types/autoincrement'],
 fn);
 /*!
  * CanJS - 2.1.0
@@ -6276,9 +6438,9 @@ define('lib/fixtures',[
 
 	var re = /%url%/;
 
-	fixturizer.resource = function(url, store){
+	fixturizer.resource = function(baseUrl, store){
 		_forEach(endpoints, function(template, action){
-			fixturizer(template.replace(re, url), store.API[action]);
+			fixturizer(template.replace(re, baseUrl), store.API[action]);
 		})
 	}
 
@@ -9358,7 +9520,8 @@ define('lib/store',[
 
 	_assign(Store.prototype, {
 		generate : function(overrides){
-			return generateFromSchema(this._schema, this._rawSchema, overrides || this._overrides);
+			var combinedOverrides = _assign({}, this._overrides, overrides);
+			return generateFromSchema(this._schema, this._rawSchema, combinedOverrides);
 		},
 		fillStore : function(count){
 			for(var i = this.db().count(); i < count; i++){
@@ -9467,18 +9630,26 @@ define('lib/api',[
 			var results = {},
 				limit = params.limit,
 				offset = params.offset,
-				items = this._getRecordset(params);
+				items;
 
-			results.data = items.get();
+			delete params.limit;
+			delete params.offset;
+
+			items = this._getRecordset(params);
+			
 			results.count = items.count();
 
 			if(limit){
 				results.limit = limit;
+				items = items.limit(parseInt(limit, 10));
 			}
 
 			if(offset){
 				results.offset = offset;
+				items = items.start(offset);
 			}
+
+			results.data = items.get();
 
 			return results;
 		},
@@ -9528,26 +9699,15 @@ define('lib/api',[
 			}
 		},
 		_getRecordset : function(params){
-			var items, order, limit, offset;
-
-			order  = params.order;
-			limit  = params.limit;
-			offset = params.offset;
+			var order = params.order,
+				items;
 
 			delete params.order;
-			delete params.limit;
-			delete params.offset;
 
 			items = this.store.db(params);
 
 			if(order){
 				items = items.order(this._prepareOrder(order));
-			}
-			if(limit){
-				items = items.limit(parseInt(limit, 10));
-			}
-			if(offset){
-				items = items.start(offset);
 			}
 
 			return items;
@@ -9574,6 +9734,14 @@ define('lib/api',[
 			return ex;
 		}
 	});
+
+	API.extend = function(obj){
+		return function(store){
+			var api = new API(store);
+			_assign(api, obj);
+			return api;
+		}
+	}
 
 	return API;
 });
@@ -9610,11 +9778,11 @@ define('apitizer',[
 		validateWithSchema : function(name, data){
 			return Store.validateWithSchema(name, data);
 		},
-		generateFromSchema : function(name, overrides, api){
-			return (new Store(name, 0, overrides, api || this.API)).generate();
+		generateFromSchema : function(name, overrides){
+			return (new Store(name, 0, overrides, this.API)).generate();
 		},
-		schemaStore : function(name, storeCount, overrides, api){
-			return new Store(name, storeCount, overrides, api || this.API);
+		schemaStore : function(name, count, overrides, api){
+			return new Store(name, count, overrides, api || this.API);
 		},
 		addFormat : function(name, format){
 			Store.addFormat(name, format);
