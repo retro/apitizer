@@ -12,6 +12,10 @@ APItizer goes a step further, and instead of manually defining your fixtures the
 
 ## Installation
 
+Install it with bower:
+    
+    bower install apitizer
+
 APItizer can used included either as a script tag:
 
 	<script type="text/javascript" src="path/to/apitizer.js"></script>
@@ -65,7 +69,7 @@ Now you can normally use AJAX functions and they will hit the mocked API:
 	$.get('/users/1') // Response will return the user with the id 1
 	$.post('/users', {username : 'foo', password : 'bar'}) // User will be created and saved to the store
 	$.ajax('/users/1', {type : 'put', data : {username : 'baz'}}) // User with the id 1 will be updated
-	$.ajax('/users/1', {type : 'delete'}) '' User with the id 1 will be destroyed and removed from the store
+	$.ajax('/users/1', {type : 'delete'}) // User with the id 1 will be destroyed and removed from the store
 
 ## Overriding generators
 
