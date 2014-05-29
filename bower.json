@@ -1,6 +1,6 @@
 {
   "name": "apitizer",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "homepage": "https://github.com/retro/apitizer",
   "authors": [
     "Mihael Konjevic <konjevic@gmail.com>"
@@ -8,7 +8,6 @@
   "description": "API mocking for JavaScript apps",
   "main": "dist/apitizer.js",
   "license": "MIT",
-  "private": true,
   "ignore": [
     "**/.*",
     "node_modules",

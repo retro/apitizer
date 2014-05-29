@@ -10,6 +10,18 @@ When developing single page apps, it is beneficial to develop frontend and backe
 
 APItizer goes a step further, and instead of manually defining your fixtures they are generated from the JSON schema.
 
+## Installation
+
+APItizer can used included either as a script tag:
+
+	<script type="text/javascript" src="path/to/apitizer.js"></script>
+
+Or loaded with the Require.js (or any other AMD loader):
+
+	define(["path/to/apitizer"], function(apitizer){ })
+
+Make sure **jQuery** is loaded before APItizer, as it depends on it.
+
 ## Example
 
 Let's implement a simple user endpoint. It will reside on the `/users` endpoint and implement all the usual `REST` operations.
@@ -195,3 +207,7 @@ Now you can emulate the login process by POSTing to the `/login` endpoint:
 		}, function(error){
 		alert('Wrong credentials!')
 	});
+
+--
+
+You can find more docs in the [wiki](https://github.com/retro/apitizer/wiki)
