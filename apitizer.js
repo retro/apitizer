@@ -31,11 +31,11 @@ define([
 		validateWithSchema : function(name, data){
 			return Store.validateWithSchema(name, data);
 		},
-		generateFromSchema : function(name, overrides, api){
-			return (new Store(name, 0, overrides, api || this.API)).generate();
+		generateFromSchema : function(name, overrides){
+			return (new Store(name, 0, overrides, this.API)).generate();
 		},
-		schemaStore : function(name, storeCount, overrides, api){
-			return new Store(name, storeCount, overrides, api || this.API);
+		schemaStore : function(name, count, overrides, api){
+			return new Store(name, count, overrides, api || this.API);
 		},
 		addFormat : function(name, format){
 			Store.addFormat(name, format);
