@@ -212,6 +212,18 @@ Now you can emulate the login process by POSTing to the `/login` endpoint:
 		alert('Wrong credentials!')
 	});
 
+## Response delay
+
+To simulate the real requests, responses will be returned with a delay. Default delay is 200 milliseconds, but you can easiliy change it:
+
+	apitizer.fixture.delay(300) // delay is now 300 milliseconds
+
+You can also give it a range of values, which will make the delay random:
+
+	apitizer.fixture.delay(200, 500) // delay will be between 200 and 500 milliseconds
+
+Random delay is a good way to simulate the real network conditions, and to get a feeling of responsivnes of your app.
+
 --
 
 You can find more docs in the [wiki](https://github.com/retro/apitizer/wiki)
