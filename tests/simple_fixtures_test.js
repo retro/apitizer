@@ -1,7 +1,7 @@
 define(['apitizer', 'jquery'], function(apitizer, $) {
 	return function() {
 
-		can.fixture.delay = 0;
+		apitizer.fixture.delay(0);
 
 		var userSchema = {
 			type : "object",
