@@ -208,7 +208,7 @@ Now you can emulate the login process by POSTing to the `/login` endpoint:
 		password : 1338
 	}).then(function(user){
 		alert('You logged in!')
-		}, function(error){
+	}, function(error){
 		alert('Wrong credentials!')
 	});
 
