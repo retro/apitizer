@@ -1,0 +1,30 @@
+{
+  "name": "apitizer",
+  "version": "0.0.0",
+  "description": "APItizer - Mock APIs for the single page apps",
+  "main": "dist/apitizer.js",
+  "directories": {
+    "test": "tests"
+  },
+  "dependencies": {
+    "requirejs": "~2.1.11",
+    "uglify-js": "~2.4.13"
+  },
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/retro/apitizer.git"
+  },
+  "keywords": [
+    "fixture",
+    "canjs",
+    "mock",
+    "api"
+  ],
+  "author": "Mihael Konjevic",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/retro/apitizer/issues"
+  },
+  "homepage": "https://github.com/retro/apitizer"
+}
