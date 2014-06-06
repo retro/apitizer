@@ -2972,8 +2972,8 @@ define('lib/types/formats/date-time',['../_helpers', '../integer'], function(h, 
 				var date = new Date;
 
 				date.setTime(integer({
-					minimum : opts.min.getTime(),
-					maximum : opts.max.getTime(),
+					minimum : opts.minimum.getTime(),
+					maximum : opts.maximum.getTime(),
 				}).generate());
 
 				return date.toISOString();
@@ -2983,7 +2983,8 @@ define('lib/types/formats/date-time',['../_helpers', '../integer'], function(h, 
 			}
 		}
 	})
-});
+})
+;
 define('lib/types/formats/ipv4',['../_helpers', '../integer'], function(h, integer){
 
 	var re = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
