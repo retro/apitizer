@@ -19,7 +19,6 @@
     "blanket": "~1.1.5",
     "taffydb": "*",
     "Faker.js": "git@github.com:Marak/Faker.js.git#0.7.2",
-    "canjs": "~2.1.0",
     "jquery": "~2.1.1",
     "lodash": "~2.4.1",
     "qunit": "~1.14.0",
