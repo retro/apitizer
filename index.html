@@ -1,0 +1,310 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>APItizer by retro</title>
+
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
+    <script src="javascripts/scale.fix.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>APItizer</h1>
+        <p>API mocking for the client side JavaScript applications</p>
+        <p class="view"><a href="https://github.com/retro/apitizer">View the Project on GitHub <small>retro/apitizer</small></a></p>
+        <ul>
+          <li><a href="https://github.com/retro/apitizer/zipball/master">Download <strong>ZIP File</strong></a></li>
+          <li><a href="https://github.com/retro/apitizer/tarball/master">Download <strong>TAR Ball</strong></a></li>
+          <li><a href="https://github.com/retro/apitizer">View On <strong>GitHub</strong></a></li>
+        </ul>
+      </header>
+      <section>
+        <h1>
+<a id="apitizer" class="anchor" href="#apitizer" aria-hidden="true"><span class="octicon octicon-link"></span></a>APItizer</h1>
+
+<p>APItizer is a library that allows you to mock APIs for browser applications with JSON schema. JSON schema is usually used to validate responses from APIs, but APItizer adds the ability to generate data from the same structure.</p>
+
+<p>APItizer requires understanding of the JSON schema syntax and I can recommend <a href="http://spacetelescope.github.io/understanding-json-schema/">this guide</a> to get you started.</p>
+
+<h2>
+<a id="why" class="anchor" href="#why" aria-hidden="true"><span class="octicon octicon-link"></span></a>Why</h2>
+
+<p>When developing single page apps, it is beneficial to develop frontend and backend in parallel. To achieve that, you need to mock the API. APItizer allows you to mock your API by defining the JSON schema which is used to generate the fake data.</p>
+
+<p>Previous to the version <code>0.1.0</code> APItizer was using the <a href="http://canjs.com/docs/can.fixture.html">can.fixture</a> library to mock the XHR requests, but it was replaced with the <a href="https://github.com/trek/FakeXMLHttpRequest">FakeXMLHttpRequest</a> library. FakeXMLHttpRequest library replaces the browser XHR object which ensures that APItizer can be used without any other library (jQuery or Zepto).</p>
+
+<p>This change requires you to manually start the APItizer from your code with the following command:</p>
+
+<pre><code>apitizer.start();
+</code></pre>
+
+<p>This will replace the <code>window.XMLHttpRequest</code> object and allow APItizer to take over. Stopping APItizer is done with the following command:</p>
+
+<pre><code>apitizer.stop();
+</code></pre>
+
+<h2>
+<a id="installation" class="anchor" href="#installation" aria-hidden="true"><span class="octicon octicon-link"></span></a>Installation</h2>
+
+<p>Install it with bower:</p>
+
+<pre><code>bower install apitizer
+</code></pre>
+
+<p>APItizer can used included either as a script tag:</p>
+
+<pre><code>&lt;script type="text/javascript" src="path/to/apitizer.js"&gt;&lt;/script&gt;
+</code></pre>
+
+<p>Or loaded with the Require.js (or any other AMD loader):</p>
+
+<pre><code>define(["path/to/apitizer"], function(apitizer){ })
+</code></pre>
+
+<p>After the APItizer is loaded you have to start it before it can intercept the requests:</p>
+
+<pre><code>define(["path/to/apitizer"], function(apitizer){ 
+    apitizer.start();
+})
+</code></pre>
+
+<h2>
+<a id="example" class="anchor" href="#example" aria-hidden="true"><span class="octicon octicon-link"></span></a>Example</h2>
+
+<p>Let's implement a simple user endpoint. It will reside on the <code>/users</code> endpoint and implement all the usual <code>REST</code> operations.</p>
+
+<p>First let's define the schema:</p>
+
+<pre><code>var schema = {
+    type : "object",
+    properties : {
+        id : {
+            type : "integer"
+        },
+        username : {
+            type : "string"
+        },
+        password : {
+            type : "string"
+        }
+    }
+}
+</code></pre>
+
+<p>Now we can add it to the APItizer:</p>
+
+<pre><code>apitizer.addSchema('user', schema);
+</code></pre>
+
+<p>After adding it to the <code>apitizer</code> we can mock the API:</p>
+
+<pre><code>apitizer.fixture.resource('/users', apitizer.schemaStore('user', 10));
+</code></pre>
+
+<p>This will create a store with 10 users in it and add all REST API endpoints:</p>
+
+<pre><code>GET /users
+GET /users/{id}
+POST /users
+PUT /users/{id}
+DELETE /users/{id}
+</code></pre>
+
+<p>Now you can normally use AJAX functions and they will hit the mocked API:</p>
+
+<pre><code>$.get('/users') // Response will return 10 users
+$.get('/users/1') // Response will return the user with the id 1
+$.post('/users', {username : 'foo', password : 'bar'}) // User will be created and saved to the store
+$.ajax('/users/1', {type : 'put', data : {username : 'baz'}}) // User with the id 1 will be updated
+$.ajax('/users/1', {type : 'delete'}) // User with the id 1 will be destroyed and removed from the store
+</code></pre>
+
+<h2>
+<a id="overriding-generators" class="anchor" href="#overriding-generators" aria-hidden="true"><span class="octicon octicon-link"></span></a>Overriding generators</h2>
+
+<p>APItizer implements it's own generators for all types supported by the JSON schema, but sometimes you want more control over the data that is being generated. To achieve this, you can pass overrides to the store:</p>
+
+<pre><code>var store = apitizer.schemaStore('user', 10, {
+    id : apitizer.types.autoincrement(),
+    username : function(){
+        var count = 1;
+        return function(){
+            return "User " + (count++);
+        }
+    }
+});
+</code></pre>
+
+<p>This store will now contain objects that look like this:</p>
+
+<pre><code>[{
+    id: 1,
+    username : "User 1",
+    password : ...
+},
+{
+    id: 2,
+    username : "User 2",
+    password : ...
+}]
+</code></pre>
+
+<p>Using overrides will allow you to take control over parts of your data that are important to you. Another use for the overrides is embedding an object from one store to the object generated from another store. </p>
+
+<p>Let's say you want to mock a simple publishing API, where you have two types of resources:</p>
+
+<ol>
+<li>Articles</li>
+<li>Authors</li>
+</ol>
+
+<p>Each article contains the author object. You can easilly write a schema for this:</p>
+
+<pre><code>var authorSchema = {
+    type : "object",
+    properties : {
+        id : {
+            type : "integer"
+        },
+        username : {
+            type : "string"
+        },
+        password : {
+            type : "string"
+        }
+    }
+}
+
+var articleSchema = {
+    type : "object",
+    properties : {
+        title : {
+            type : "string"
+        },
+        body : {
+            type : "string"
+        },
+        author : {
+            $ref : "author"
+        }
+    }
+}
+
+apitizer.addSchema('author', authorSchema);
+apitizer.addSchema('article', articleSchema);
+</code></pre>
+
+<p><em>This example introduces another concept, referenced schemas which are denoted by the <code>$ref</code> key. For now, it is enough to know that this will get the <code>author</code> schema from the repository and use it to generate the data.</em></p>
+
+<p>If we create <code>author</code> and <code>article</code> stores without overrides:</p>
+
+<pre><code>var authorStore = apitizer.schemaStore('author', 10);
+var articleStore = apitizer.schemaStore('article', 10);
+</code></pre>
+
+<p>Each article will contain generated <code>author</code> object, but that author object will not look like anything contained in the <code>authorStore</code>. We can fix that by using overrides:</p>
+
+<pre><code>var authorStore = apitizer.schemaStore('author', 10);
+var articleStore = apitizer.schemaStore('article', 10, {
+    author : authorStore.one()
+});
+</code></pre>
+
+<p>In this case <code>authorStore.one()</code> will return a random object from the store, and that object will be embedded in the <code>author</code> property of the <code>article</code>.</p>
+
+<h2>
+<a id="custom-data-and-api-endpoints" class="anchor" href="#custom-data-and-api-endpoints" aria-hidden="true"><span class="octicon octicon-link"></span></a>Custom data and API endpoints</h2>
+
+<p>In some cases you might need additional API points that can handle some specific task. For instance you might have <code>/login</code> endpoint where users can login. This action will still use the <code>users</code> store, but will have to behave differently than the default REST actions. Also, for development and testing you need a user with the known credentials, so you can actually login to the app. Here is how you can solve this problem with APItizer:</p>
+
+<pre><code>var schema = {
+    type : "object",
+    properties : {
+        id : {
+            type : "integer"
+        },
+        username : {
+            type : "string"
+        },
+        password : {
+            type : "string"
+        }
+    }
+}, userStore;
+
+apitizer.addSchema('user', schema);
+userStore = apitizer.schemaStore('user', 0, {
+    id : apitizer.types.autoincrement()
+})
+</code></pre>
+
+<p>Here we have defined the schema, and created an empty store, now we can add some custom data:</p>
+
+<pre><code>userStore.add({
+    username : 'retro',
+    password : '1337'
+});
+</code></pre>
+
+<p>This will create a user with known credentials. Now all we need to do is create the <code>/login</code> endpoint:</p>
+
+<pre><code>apitizer.fixture('POST /login', function(params){
+    var users = userStore.db(params) // Search the data in the store's database
+    if(users.count() === 0){
+        throw {errors: ['Wrong credentials'], status: 401}
+    } else {
+        return users.first();
+    }
+});
+</code></pre>
+
+<p><em>APItizer uses the excellent <a href="http://www.taffydb.com">TaffyDB</a> library to store the data, so you can use it's <a href="http://www.taffydb.com/workingwithdata">fancy querying possibilities</a> to get the data.</em></p>
+
+<p>Now you can emulate the login process by POSTing to the <code>/login</code> endpoint:</p>
+
+<pre><code>$.post('/login', {
+    username : 'retro',
+    password : 1338
+}).then(function(user){
+    alert('You logged in!')
+}, function(error){
+    alert('Wrong credentials!')
+});
+</code></pre>
+
+<h2>
+<a id="response-delay" class="anchor" href="#response-delay" aria-hidden="true"><span class="octicon octicon-link"></span></a>Response delay</h2>
+
+<p>To simulate the real requests, responses will be returned with a delay. Default delay is 200 milliseconds, but you can easiliy change it:</p>
+
+<pre><code>apitizer.fixture.delay(300) // delay is now 300 milliseconds
+</code></pre>
+
+<p>You can also give it a range of values, which will make the delay random:</p>
+
+<pre><code>apitizer.fixture.delay(200, 500) // delay will be between 200 and 500 milliseconds
+</code></pre>
+
+<p>Random delay is a good way to simulate the real network conditions, and to get a feeling of responsivnes of your app.</p>
+
+<h2></h2>
+
+<p>You can find more docs in the <a href="https://github.com/retro/apitizer/wiki">wiki</a></p>
+      </section>
+    </div>
+    <footer>
+      <p>Project maintained by <a href="https://github.com/retro">retro</a></p>
+      <p>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></p>
+    </footer>
+    <!--[if !IE]><script>fixScale(document);</script><![endif]-->
+    
+  </body>
+</html>
