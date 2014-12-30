@@ -6,7 +6,7 @@ APItizer requires understanding of the JSON schema syntax and I can recommend [t
 
 ## Updating from v0.0.4
 
-** You must call `apitizer.start()` now for APItizer to work **. 
+**You must call `apitizer.start()` now for APItizer to work.** 
 
 Prior to the version `0.1.0` APItizer was using the [can.fixture](http://canjs.com/docs/can.fixture.html) library to mock the XHR requests, but it was replaced with the [FakeXMLHttpRequest](https://github.com/trek/FakeXMLHttpRequest) library. FakeXMLHttpRequest library replaces the browser XHR object which enables APItizer to work without any library dependencies (jQuery or Zepto).
 
