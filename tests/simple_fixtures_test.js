@@ -33,6 +33,11 @@ define(['apitizer', 'jquery'], function(apitizer, $) {
 		module('apitizer/simple_fixtures', {
 			setup : function(){
 				apitizer.addSchema('user', userSchema);
+				apitizer.start();
+			},
+			teardown : function(){
+				apitizer.dropSchemas();
+				apitizer.stop();
 			}
 		});
 
