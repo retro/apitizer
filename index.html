@@ -35,11 +35,11 @@
 <p>APItizer requires understanding of the JSON schema syntax and I can recommend <a href="http://spacetelescope.github.io/understanding-json-schema/">this guide</a> to get you started.</p>
 
 <h2>
-<a id="why" class="anchor" href="#why" aria-hidden="true"><span class="octicon octicon-link"></span></a>Why</h2>
+<a id="updating-from-v004" class="anchor" href="#updating-from-v004" aria-hidden="true"><span class="octicon octicon-link"></span></a>Updating from v0.0.4</h2>
 
-<p>When developing single page apps, it is beneficial to develop frontend and backend in parallel. To achieve that, you need to mock the API. APItizer allows you to mock your API by defining the JSON schema which is used to generate the fake data.</p>
+<p><strong>You must call <code>apitizer.start()</code> now for APItizer to work.</strong> </p>
 
-<p>Previous to the version <code>0.1.0</code> APItizer was using the <a href="http://canjs.com/docs/can.fixture.html">can.fixture</a> library to mock the XHR requests, but it was replaced with the <a href="https://github.com/trek/FakeXMLHttpRequest">FakeXMLHttpRequest</a> library. FakeXMLHttpRequest library replaces the browser XHR object which ensures that APItizer can be used without any other library (jQuery or Zepto).</p>
+<p>Prior to the version <code>0.1.0</code> APItizer was using the <a href="http://canjs.com/docs/can.fixture.html">can.fixture</a> library to mock the XHR requests, but it was replaced with the <a href="https://github.com/trek/FakeXMLHttpRequest">FakeXMLHttpRequest</a> library. FakeXMLHttpRequest library replaces the browser XHR object which enables APItizer to work without any library dependencies (jQuery or Zepto).</p>
 
 <p>This change requires you to manually start the APItizer from your code with the following command:</p>
 
@@ -50,6 +50,13 @@
 
 <pre><code>apitizer.stop();
 </code></pre>
+
+<h2>
+<a id="why" class="anchor" href="#why" aria-hidden="true"><span class="octicon octicon-link"></span></a>Why</h2>
+
+<p>When developing single page apps, it is beneficial to develop the frontend and the backend in the parallel. To achieve that, you need to mock the API. APItizer allows you to mock your API by defining the JSON schema which is used to generate the fake data.</p>
+
+<p>By using the JSON schema to define the format of the API responses, you create an explict contract which can be used to validate backend responeses once you start to integrate the real API.</p>
 
 <h2>
 <a id="installation" class="anchor" href="#installation" aria-hidden="true"><span class="octicon octicon-link"></span></a>Installation</h2>
