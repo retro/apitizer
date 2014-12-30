@@ -2,8 +2,12 @@ define(['apitizer', 'jquery'], function(apitizer, $) {
 	return function() {
 		
 		module('apitizer/custom_fixtures', {
+			setup: function(){
+				apitizer.start();
+			},
 			teardown : function(){
 				apitizer.dropSchemas();
+				apitizer.stop();
 			}
 		});
 

@@ -26,12 +26,17 @@
     "tv4": "~1.0.17",
     "Randexp.js": "https://github.com/fent/randexp.js/releases/download/v0.3.3/randexp.min.js",
     "almond": "~0.2.9",
-    "lodash-amd": "~2.4.1"
+    "lodash-amd": "~2.4.1",
+    "fake-xml-http-request": "git@github.com:trek/FakeXMLHttpRequest.git",
+    "rlite": "git@github.com:chrisdavies/rlite.git"
   },
   "keywords": [
     "rest",
     "api",
     "mock",
     "fixture"
-  ]
+  ],
+  "dependencies": {
+    "query-string": "~1.0.0"
+  }
 }

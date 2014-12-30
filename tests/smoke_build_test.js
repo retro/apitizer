@@ -1,6 +1,7 @@
 module("apitizer/smoke");
 
 asyncTest("Make sure stuff works", function(){
+	apitizer.start();
 	expect(5);
 	var schema = {
 		type : "object",

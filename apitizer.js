@@ -4,8 +4,10 @@ define([
 	'lodash/collections/forEach',
 	'./lib/fixtures',
 	'./lib/store',
-	'./lib/api',
+	'./lib/api'
 ], function(tv4, types, _forEach, fixture, Store, API){
+
+	var __originalXHR = null;
 
 	types.formats = types.formats || {};
 
@@ -39,6 +41,18 @@ define([
 		},
 		addFormat : function(name, format){
 			Store.addFormat(name, format);
+		},
+		start : function(){
+			if(!__originalXHR){
+				__originalXHR = window.XMLHttpRequest;
+				window.XMLHttpRequest = fixture.responder;
+			}
+		},
+		stop : function(){
+			if(__originalXHR){
+				window.XMLHttpRequest = __originalXHR;
+				__originalXHR = null;
+			}
 		},
 		types : types,
 		fixture : fixture,

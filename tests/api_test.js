@@ -2,8 +2,12 @@ define(['apitizer', 'lodash'], function(apitizer, _) {
 	return function() {
 
 		module('apitizer/api', {
+			setup : function(){
+				apitizer.start();
+			},
 			teardown : function(){
 				apitizer.dropSchemas();
+				apitizer.stop();
 			}
 		});
 
