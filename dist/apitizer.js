@@ -4971,6 +4971,11 @@ define('lib/fixtures',[
 		for(var k in params){
 			if(params.hasOwnProperty(k) && typeof params[k] === 'string'){
 				params[k] = decodeURIComponent(params[k]).replace(/[+]/g, ' ');
+				if(params[k] === 'true'){
+					params[k] = true;
+				} else if(params[k] === 'false'){
+					params[k] = false;
+				}
 			}
 		}
 		return params;
@@ -4992,7 +4997,7 @@ define('lib/fixtures',[
 	var _handleRequest = function(xhr){
 		var url = _cleanMultipleSlashes([_prepareMethod(xhr.method), xhr.url].join('/'));
 
-		if(r.run(url.toLowerCase())){
+		if(r.run(url)){
 			(function(responder){
 				setTimeout(function(){
 					var data, res, status;

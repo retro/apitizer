@@ -3,6 +3,7 @@ define(['apitizer', 'jquery'], function(apitizer, $) {
 
 		apitizer.fixture.delay(0);
 
+		var i = 0;
 		var userSchema = {
 			type : "object",
 			properties : {
@@ -17,6 +18,9 @@ define(['apitizer', 'jquery'], function(apitizer, $) {
 				password : {
 					type : "string",
 					minLength : 6
+				},
+				isAdmin : {
+					type : 'boolean'
 				}
 			}
 		}
@@ -25,7 +29,10 @@ define(['apitizer', 'jquery'], function(apitizer, $) {
 		var autoincrement = apitizer.types.autoincrement();
 
 		var store = apitizer.schemaStore('user', 10, {
-			id : autoincrement
+			id : autoincrement,
+			isAdmin : function(){
+				return (i++) % 2 === 0;
+			}
 		});
 
 		apitizer.fixture.resource('/users', store);
@@ -47,6 +54,22 @@ define(['apitizer', 'jquery'], function(apitizer, $) {
 			$.get('/users').then(function(users){
 				equal(users.data.length, 10, "Correct number of users is returned");
 				equal(users.count, 10, "Correct count is returned");
+				start();
+			});
+		});
+
+		asyncTest("Get only admins (sending true in the url)", function(){
+			expect(1);
+			$.get('/users?isAdmin=true').then(function(users){
+				equal(users.data.length, 5, 'Users are correctly filtered');
+				start();
+			});
+		});
+
+		asyncTest("Get only non-admins (sending false in the url)", function(){
+			expect(1);
+			$.get('/users?isAdmin=false').then(function(users){
+				equal(users.data.length, 5, 'Users are correctly filtered');
 				start();
 			});
 		});
