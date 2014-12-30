@@ -4,11 +4,11 @@ APItizer is a library that allows you to mock APIs for browser applications with
 
 APItizer requires understanding of the JSON schema syntax and I can recommend [this guide](http://spacetelescope.github.io/understanding-json-schema/) to get you started.
 
-## Why
+## Updating from v0.0.4
 
-When developing single page apps, it is beneficial to develop frontend and backend in parallel. To achieve that, you need to mock the API. APItizer allows you to mock your API by defining the JSON schema which is used to generate the fake data.
+** You must call `apitizer.start()` now for APItizer to work **. 
 
-Previous to the version `0.1.0` APItizer was using the [can.fixture](http://canjs.com/docs/can.fixture.html) library to mock the XHR requests, but it was replaced with the [FakeXMLHttpRequest](https://github.com/trek/FakeXMLHttpRequest) library. FakeXMLHttpRequest library replaces the browser XHR object which ensures that APItizer can be used without any other library (jQuery or Zepto).
+Prior to the version `0.1.0` APItizer was using the [can.fixture](http://canjs.com/docs/can.fixture.html) library to mock the XHR requests, but it was replaced with the [FakeXMLHttpRequest](https://github.com/trek/FakeXMLHttpRequest) library. FakeXMLHttpRequest library replaces the browser XHR object which enables APItizer to work without any library dependencies (jQuery or Zepto).
 
 This change requires you to manually start the APItizer from your code with the following command:
 
@@ -17,6 +17,12 @@ This change requires you to manually start the APItizer from your code with the 
 This will replace the `window.XMLHttpRequest` object and allow APItizer to take over. Stopping APItizer is done with the following command:
 
 	apitizer.stop();
+
+## Why
+
+When developing single page apps, it is beneficial to develop the frontend and the backend in the parallel. To achieve that, you need to mock the API. APItizer allows you to mock your API by defining the JSON schema which is used to generate the fake data.
+
+By using the JSON schema to define the format of the API responses, you create an explict contract which can be used to validate backend responeses once you start to integrate the real API.
 
 ## Installation
 
