@@ -4850,8 +4850,8 @@ define("fakexmlhttprequest", [], function() {
     window.FakeXMLHttpRequest = $$$src$fake$xml$http$request$$default;
 }).call(this);
 
-//# sourceMappingURL=fake_xml_http_request.js.map
-;return root.FakeXMLHttpRequest = FakeXMLHttpRequest;      }).apply(root, arguments);
+
+return root.FakeXMLHttpRequest = FakeXMLHttpRequest;      }).apply(root, arguments);
     });
 }(this));
 
@@ -4970,7 +4970,7 @@ define('lib/fixtures',[
 	var _cleanParams = function(params){
 		for(var k in params){
 			if(params.hasOwnProperty(k) && typeof params[k] === 'string'){
-				params[k] = decodeURI(params[k]).replace(/[+]/g, ' ');
+				params[k] = decodeURIComponent(params[k]).replace(/[+]/g, ' ');
 			}
 		}
 		return params;
@@ -8404,7 +8404,7 @@ define('apitizer',[
 	types.formats = types.formats || {};
 
 	_forEach(types.formats, function(format, name){
-		tv4.addFormat('name', function(val){
+		tv4.addFormat(name, function(val){
 			if(format.validate(val)){
 				return null;
 			}

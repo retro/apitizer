@@ -12,7 +12,7 @@ define([
 	types.formats = types.formats || {};
 
 	_forEach(types.formats, function(format, name){
-		tv4.addFormat('name', function(val){
+		tv4.addFormat(name, function(val){
 			if(format.validate(val)){
 				return null;
 			}

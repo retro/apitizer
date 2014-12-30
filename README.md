@@ -6,9 +6,17 @@ APItizer requires understanding of the JSON schema syntax and I can recommend [t
 
 ## Why
 
-When developing single page apps, it is beneficial to develop frontend and backend in parallel. To achieve that, you need to mock the API. CanJS implements this elegantly with the `can.fixture` plugin (used by APItizer). `can.fixture` intercepts AJAX calls and returns response defined by the fixtures.
+When developing single page apps, it is beneficial to develop frontend and backend in parallel. To achieve that, you need to mock the API. APItizer allows you to mock your API by defining the JSON schema which is used to generate the fake data.
 
-APItizer goes a step further, and instead of manually defining your fixtures they are generated from the JSON schema.
+Previous to the version `0.1.0` APItizer was using the [can.fixture](http://canjs.com/docs/can.fixture.html) library to mock the XHR requests, but it was replaced with the [FakeXMLHttpRequest](https://github.com/trek/FakeXMLHttpRequest) library. FakeXMLHttpRequest library replaces the browser XHR object which ensures that APItizer can be used without any other library (jQuery or Zepto).
+
+This change requires you to manually start the APItizer from your code with the following command:
+
+	apitizer.start();
+
+This will replace the `window.XMLHttpRequest` object and allow APItizer to take over. Stopping APItizer is done with the following command:
+
+	apitizer.stop();
 
 ## Installation
 
@@ -24,7 +32,12 @@ Or loaded with the Require.js (or any other AMD loader):
 
 	define(["path/to/apitizer"], function(apitizer){ })
 
-Make sure **jQuery** is loaded before APItizer, as it depends on it.
+After the APItizer is loaded you have to start it before it can intercept the requests:
+	
+	define(["path/to/apitizer"], function(apitizer){ 
+		apitizer.start();
+	})
+
 
 ## Example
 

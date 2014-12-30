@@ -10,6 +10,7 @@
 	optimize : 'none',
 	exclude : ['jquery'],
 	onBuildWrite : function(moduleName, path, contents){
+		contents = contents.replace(/\/\/\#\s*sourceMappingURL.*$/g, '');
 		return "\r\n" + contents + "\r\n";
 	},
 	paths: {
