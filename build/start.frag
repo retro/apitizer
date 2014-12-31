@@ -6,9 +6,13 @@
         //the closure below.
 
         define([], factory);
+    } else if(typeof exports === 'object') {
+        module.exports = factory();
     } else {
         //Browser globals case. Just assign the
         //result to a property on the global.
         root.apitizer = factory();
     }
 }(this, function () {
+
+

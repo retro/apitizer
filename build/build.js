@@ -15,8 +15,6 @@
 	},
 	paths: {
 		jquery             : 'bower_components/jquery/dist/jquery',
-		mustache           : 'bower_components/require-can-renderers/lib/mustache',
-		ejs                : 'bower_components/require-can-renderers/lib/ejs',
 		faker              : 'bower_components/Faker.js/Faker',
 		tv4                : 'bower_components/tv4/tv4',
 		RandExp            : 'bower_components/Randexp.js/index',
