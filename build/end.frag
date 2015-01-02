@@ -1,2 +1,2 @@
-    return require('apitizer');
+	return requirejs('apitizer');
 }));
