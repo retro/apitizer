@@ -5022,7 +5022,9 @@ define('lib/fixtures',[
 				}, _delay());
 			})(currentResponder);
 		} else {
-			xhr.respond(404, {'Content-Type': 'application/json'});
+			setTimeout(function(){
+				xhr.respond(404, {'Content-Type': 'application/json'});
+			}, 1);
 		}
 	}
 
