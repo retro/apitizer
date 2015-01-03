@@ -21,6 +21,9 @@ define(['apitizer', 'jquery'], function(apitizer, $) {
 				},
 				isAdmin : {
 					type : 'boolean'
+				},
+				groupId : {
+					type: 'integer'
 				}
 			}
 		}
@@ -32,6 +35,12 @@ define(['apitizer', 'jquery'], function(apitizer, $) {
 			id : autoincrement,
 			isAdmin : function(){
 				return (i++) % 2 === 0;
+			},
+			groupId : function(){
+				if(i === 1){
+					return null;
+				}
+				return 1;
 			}
 		});
 
@@ -70,6 +79,14 @@ define(['apitizer', 'jquery'], function(apitizer, $) {
 			expect(1);
 			$.get('/users?isAdmin=false').then(function(users){
 				equal(users.data.length, 5, 'Users are correctly filtered');
+				start();
+			});
+		});
+
+		asyncTest("Get users with null in the groupId", function(){
+			expect(1);
+			$.get('/users?groupId=null').then(function(users){
+				equal(users.data.length, 1, 'Users are correctly filtered');
 				start();
 			});
 		});

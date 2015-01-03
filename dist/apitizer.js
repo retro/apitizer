@@ -8380,7 +8380,7 @@ define('lib/api',[
 				if(_contains(protectedParams, key)){
 					acc[key] = val;
 				} else {
-					acc[key] = {'==' : val};
+					acc[key] = {'==' : (val === "null" ? null : val)};
 				}
 				return acc;
 			}, {});
