@@ -4930,6 +4930,18 @@ return root.FakeXMLHttpRequest = FakeXMLHttpRequest;      }).apply(root, argumen
 
 
 
+define('lib/error',[],function(){
+	var ApitizerError = function (message){
+		this.message = message;
+		this.stack = (new Error()).stack;
+	}
+	ApitizerError.prototype = new Error;
+	ApitizerError.prototype.name = 'ApitizerError'; 
+
+	return ApitizerError;
+})
+;
+
 define('lib/fixtures',[
 'lodash/collections/reduce',
 'lodash/collections/contains',
@@ -4938,8 +4950,9 @@ define('lib/fixtures',[
 'lib/types/integer',
 'rlite',
 'fakexmlhttprequest',
-'querystring'
-], function(_reduce, _contains, _assign, _forEach, integer, Rlite, FakeXHR, queryString){
+'querystring',
+'./error'
+], function(_reduce, _contains, _assign, _forEach, integer, Rlite, FakeXHR, queryString, ApitizerError){
 
 	var _delay = function(){
 		return 200;
@@ -5005,7 +5018,7 @@ define('lib/fixtures',[
 		if(r.run(url)){
 			(function(responder){
 				setTimeout(function(){
-					var data, res, status;
+					var data, res, status, message;
 					if(xhr.requestHeaders['Content-Type'] && xhr.requestHeaders['Content-Type'].indexOf('json') > -1){
 						data = JSON.parse(xhr.requestBody);
 					} else {
@@ -5015,9 +5028,15 @@ define('lib/fixtures',[
 						res = responder(data);
 						xhr.respond(200, {'Content-Type': 'application/json'}, JSON.stringify(res));
 					} catch(e){
-						status = e.status || 406;
-						delete e.status;
-						xhr.respond(status, {'Content-Type': 'application/json'}, JSON.stringify(e));
+						if(e instanceof ApitizerError){
+							message = e.message;
+							status = message.status || 406;
+							delete message.status;
+							xhr.respond(status, {'Content-Type': 'application/json'}, JSON.stringify(message));
+						} else {
+							throw e;
+						}
+						
 					}
 				}, _delay());
 			})(currentResponder);
@@ -7887,8 +7906,9 @@ define('lib/store',[
 'lodash/objects/merge',
 'lodash/collections/reduce',
 'lodash/objects/assign',
-'lodash/functions/bindAll'
-], function(types, Taffy, tv4, _clone, _isArray, _isFunction, _isPlainObject, _map, _merge, _reduce, _assign, _bindAll){
+'lodash/functions/bindAll',
+'./error'
+], function(types, Taffy, tv4, _clone, _isArray, _isFunction, _isPlainObject, _map, _merge, _reduce, _assign, _bindAll, ApitizerError){
 
 	var currentSchema = "";
 
@@ -8130,7 +8150,7 @@ define('lib/store',[
 		this._overrides = overrides || {};
 
 		if(!this._rawSchema){
-			throw new Error('Apitizer: Missing schema named "' + this._schemaName + '"');
+			throw new ApitizerError('Apitizer: Missing schema named "' + this._schemaName + '"');
 		}
 
 		this.API = _bindAll(new API(this));
@@ -8260,8 +8280,9 @@ define('lib/api',[
 'lodash/objects/merge',
 'lodash/objects/isArray',
 'lodash/collections/contains',
-'lodash/collections/reduce'
-], function(_assign, _merge, _isArray, _contains, _reduce){
+'lodash/collections/reduce',
+'./error'
+], function(_assign, _merge, _isArray, _contains, _reduce, ApitizerError){
 
 	var API = function(store){
 		this.store = store;
@@ -8386,7 +8407,7 @@ define('lib/api',[
 			}, {});
 		},
 		_formatException : function(ex){
-			return ex;
+			return new ApitizerError(ex);
 		}
 	});
 
@@ -8408,8 +8429,9 @@ define('apitizer',[
 	'lodash/collections/forEach',
 	'./lib/fixtures',
 	'./lib/store',
-	'./lib/api'
-], function(tv4, types, _forEach, fixture, Store, API){
+	'./lib/api',
+	'./lib/error',
+], function(tv4, types, _forEach, fixture, Store, API, ApitizerError){
 
 	var __originalXHR = null;
 
@@ -8460,7 +8482,8 @@ define('apitizer',[
 		},
 		types : types,
 		fixture : fixture,
-		API : API
+		API : API,
+		Error : ApitizerError
 	};
 })
 ;

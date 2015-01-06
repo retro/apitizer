@@ -4,8 +4,9 @@ define([
 	'lodash/collections/forEach',
 	'./lib/fixtures',
 	'./lib/store',
-	'./lib/api'
-], function(tv4, types, _forEach, fixture, Store, API){
+	'./lib/api',
+	'./lib/error',
+], function(tv4, types, _forEach, fixture, Store, API, ApitizerError){
 
 	var __originalXHR = null;
 
@@ -56,6 +57,7 @@ define([
 		},
 		types : types,
 		fixture : fixture,
-		API : API
+		API : API,
+		Error : ApitizerError
 	};
 })

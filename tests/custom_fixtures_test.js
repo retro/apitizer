@@ -49,7 +49,7 @@ define(['apitizer', 'jquery'], function(apitizer, $) {
 				if(member){
 					return member;
 				} else {
-					throw { errors: ['Wrong login credentials.'], status: 403 };
+					throw new apitizer.Error({ errors: ['Wrong login credentials.'], status: 403 });
 				}
 
 			});

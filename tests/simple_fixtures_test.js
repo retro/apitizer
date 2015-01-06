@@ -243,5 +243,31 @@ define(['apitizer', 'jquery'], function(apitizer, $) {
 			})
 		})
 
+		asyncTest("APItizer won't swallow errors thrown in the callback functions", function(){
+			$.get('/users', {
+				order : "id desc",
+				limit : 2,
+				offset : 1,
+			}).then(throws(function(users){
+				start();
+				throw "foo";
+			}, "foo"))
+		});
+
+		asyncTest("APItizer handles APItizer errors thrown in the callback functions", function(){
+			$.get('/users/1', {
+				order : "id desc",
+				limit : 2,
+				offset : 1,
+			}).then(function(users){
+				throw apitizer.Error({message: 'foo'})
+			}, function(){
+				ok(true);
+				start();
+			});
+		});
+
+
+
 	};
 });
